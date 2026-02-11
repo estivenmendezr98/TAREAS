@@ -1,0 +1,275 @@
+/* GanttStyles.css */
+
+/* Main Container - Split Pane Layout */
+.gantt-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    background-color: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-family: 'Inter', sans-serif;
+    overflow: hidden;
+    /* Prevent outer scroll */
+}
+
+/* Header & Body Row Layout */
+.gantt-split-row {
+    display: flex;
+    width: 100%;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+/* Sidebar Column (Fixed Width) */
+.gantt-sidebar-col {
+    width: 250px;
+    min-width: 250px;
+    border-right: 1px solid #e2e8f0;
+    background-color: #fff;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    font-size: 0.875rem;
+    color: #1e293b;
+    font-weight: 500;
+    z-index: 20;
+    flex-shrink: 0;
+}
+
+.gantt-sidebar-header {
+    background-color: #f8fafc;
+    font-weight: 600;
+    color: #475569;
+    height: 100%;
+}
+
+/* Timeline Area (Scrollable) */
+.gantt-timeline-area {
+    flex: 1;
+    overflow-x: auto;
+    overflow-y: hidden;
+    /* Header doesn't scroll vertically */
+    display: flex;
+    position: relative;
+    /* Create a stacking context */
+}
+
+/* Timeline specific for Body that allows vertical scroll if needed, 
+   but usually we scroll the whole body? 
+   No, usually Gantt has fixed Sidebar and Scrollable Timeline. 
+   But if we have many tasks, we need vertical scroll for BOTH.
+*/
+.gantt-body-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    /* Horizontal scroll is handled effectively by the inner timeline container? 
+    Wait, standard "Simultaneous Scroll" is hard without sync. 
+    The requested layout was "Panel Izquierdo Fijo, Panel Derecho Scrollable".
+    Let's stick to the user Request: Split Pane. 
+    Usually implies Fixed Sidebar + Scrollable Timeline.
+    BUT if we scroll down, sidebar must follow.
+    So we need a common wrapper for vertical scroll, 
+    AND a wrapper for horizontal scroll for the timeline part.
+    
+    Actually, user asked for: 
+    Panel Izquierdo (Fijo) 
+    Panel Derecho (Scrollable with overflow-x: auto).
+    
+    Let's implement the structure:
+    <Container>
+      <HeaderRow> (SidebarHeader + TimelineHeader)
+      <BodyRow> (SidebarContent + ScrollableTimelineContent) ? 
+      No, usually standard table behavior is easier:
+      We make the Sidebar sticky left.
+    */
+
+    /* Let's try the user's implicit simple structure:
+       Container -> Flex Row
+         Left Panel (Task Names)
+         Right Panel (Timeline scroll area)
+       
+       Wait, if we scroll Right Panel horizontally, it works.
+       If we scroll vertically, both must move.
+       
+       The simpler approach requested:
+       "Panel Izquierdo (Fijo)... Panel Derecho (Scrollable) con overflow-x: auto"
+    
+       If we treat them as separate scroll areas, vertical scroll won't sync.
+       
+       Better approach that matches user "Header sticky":
+       One big scrollable area (vertical), 
+       Sidebar is Sticky Left.
+       Header is Sticky Top.
+    */
+    display: flex;
+    flex-direction: column;
+}
+
+/* We will use a CSS Grid or Flex approach where:
+   The whole gantt-body is vertically scrollable.
+   The Sidebar is position: sticky; left: 0;
+   The Header is position: sticky; top: 0;
+*/
+
+.gantt-scroll-container {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.gantt-header-row {
+    display: flex;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background-color: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    min-width: max-content;
+    /* Ensure it stretches */
+}
+
+.gantt-header-sidebar-cell {
+    width: 250px;
+    min-width: 250px;
+    position: sticky;
+    left: 0;
+    z-index: 40;
+    /* Higher than timeline header cells */
+    background-color: #f8fafc;
+    border-right: 1px solid #e2e8f0;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    color: #475569;
+    height: 48px;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+}
+
+.gantt-header-cell {
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-right: 1px solid #e2e8f0;
+    font-size: 0.75rem;
+    color: #64748b;
+    background-color: #f8fafc;
+    box-sizing: border-box;
+}
+
+/* Body Rows */
+.gantt-row {
+    display: flex;
+    height: 40px;
+    border-bottom: 1px solid #f1f5f9;
+    background-color: white;
+    min-width: max-content;
+}
+
+.gantt-row:hover {
+    background-color: #f8fafc;
+}
+
+.gantt-cell-sidebar {
+    width: 250px;
+    min-width: 250px;
+    position: sticky;
+    left: 0;
+    z-index: 20;
+    /* Above timeline bars if they scroll under? No, bars are in right panel. */
+    background-color: white;
+    /* Opaque to hide scrolled content */
+    border-right: 1px solid #e2e8f0;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    font-size: 0.875rem;
+    color: #334155;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+    /* Shadow to indicate elevation */
+}
+
+.gantt-timeline-row-content {
+    flex: 1;
+    position: relative;
+    /* Grid Lines Background */
+}
+
+/* Grid Lines */
+.gantt-grid-cell {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-right: 1px solid #f1f5f9;
+    /* Very subtle */
+}
+
+/* Task Bar */
+.gantt-task-bar {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 26px;
+    background-color: #3b82f6;
+    border: 1px solid #2563eb;
+    border-radius: 6px;
+    padding: 0 8px;
+    color: white;
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    white-space: nowrap;
+    cursor: grab;
+    z-index: 10;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    transition: box-shadow 0.2s, opacity 0.2s;
+}
+
+.gantt-task-bar:hover {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+    z-index: 15;
+}
+
+.gantt-task-bar.dragging {
+    cursor: grabbing;
+    opacity: 0.9;
+    box-shadow: 0 8px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Resize Handles */
+.gantt-resize-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 8px;
+    cursor: col-resize;
+    z-index: 20;
+    opacity: 0;
+    /* Hidden unless hovered */
+    transition: opacity 0.2s;
+}
+
+.gantt-task-bar:hover .gantt-resize-handle {
+    opacity: 1;
+}
+
+.gantt-resize-handle.left {
+    left: 0;
+    border-radius: 6px 0 0 6px;
+    background: linear-gradient(to right, rgba(255, 255, 255, 0.3), transparent);
+}
+
+.gantt-resize-handle.right {
+    right: 0;
+    border-radius: 0 6px 6px 0;
+    background: linear-gradient(to left, rgba(255, 255, 255, 0.3), transparent);
+}

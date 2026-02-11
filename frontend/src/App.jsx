@@ -1,0 +1,312 @@
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import axios from 'axios';
+import { Plus } from 'lucide-react';
+import ProjectItem from './ProjectItem';
+import CalendarView from './CalendarView';
+import RecycleBinView from './RecycleBinView';
+import GanttChart from './components/Gantt/GanttChart';
+import ConfirmationModal from './components/ConfirmationModal';
+import UsersView from './components/UsersView';
+import { ToastProvider, useToast } from './context/ToastContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import Login from './components/Login';
+import './index.css';
+
+function AppContent() {
+  const { isAuthenticated, logout: authLogout, user } = useAuth();
+  const [projects, setProjects] = useState([]);
+  const [newProjectTitle, setNewProjectTitle] = useState('');
+  const [viewMode, setViewMode] = useState('active'); // 'active', 'archived', 'calendar', 'deleted', 'gantt'
+  const [deletedData, setDeletedData] = useState({ projects: [], tasks: [] });
+  const [confirmModalState, setConfirmModalState] = useState({ isOpen: false, type: null, id: null });
+  const { addToast } = useToast();
+
+  const fetchProjects = useCallback(async () => {
+    try {
+      const response = await axios.get('http://localhost:3000/api/projects');
+      setProjects(response.data);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    }
+  }, []);
+
+  const fetchDeleted = useCallback(async () => {
+    try {
+      const response = await axios.get('http://localhost:3000/api/deleted');
+      setDeletedData(response.data);
+    } catch (error) {
+      console.error('Error fetching deleted items:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
+
+  useEffect(() => {
+    if (viewMode === 'deleted' && user) {
+      fetchDeleted();
+    }
+  }, [viewMode, user, fetchDeleted]);
+
+  // Flatten all tasks for Gantt View
+  const allTasks = useMemo(() => {
+    return projects.flatMap(p => p.tasks.map(t => ({ ...t, project_title: p.title }))).filter(t => !t.deleted_at);
+  }, [projects]);
+
+  const handleCreateProject = async (e) => {
+    e.preventDefault();
+    if (!newProjectTitle.trim()) return;
+
+    try {
+      await axios.post('http://localhost:3000/api/projects', { title: newProjectTitle });
+      setNewProjectTitle('');
+      setViewMode('active');
+      fetchProjects();
+      addToast('Proyecto creado exitosamente', 'success');
+    } catch (error) {
+      console.error('Error creating project:', error);
+      addToast('Error al crear proyecto', 'error');
+    }
+  };
+
+  const handleNavigateToProject = (projectId) => {
+    const targetProject = projects.find(p => p.id === projectId);
+    if (targetProject) {
+      setViewMode(targetProject.is_archived ? 'archived' : 'active');
+      setTimeout(() => {
+        const element = document.getElementById(`project-${projectId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          element.classList.add('highlight-pulse');
+          setTimeout(() => element.classList.remove('highlight-pulse'), 2000);
+        }
+      }, 100);
+    }
+  };
+
+  const handleRestore = async (type, id) => {
+    try {
+      await axios.post(`http://localhost:3000/api/restore/${type}/${id}`);
+      fetchDeleted();
+      fetchProjects();
+      addToast('Elemento restaurado', 'success');
+    } catch (error) {
+      console.error(`Error restoring ${type}:`, error);
+      addToast('Error al restaurar', 'error');
+    }
+  };
+
+  const handlePermanentDelete = (type, id) => {
+    setConfirmModalState({ isOpen: true, type, id });
+  };
+
+  const executePermanentDelete = async () => {
+    const { type, id } = confirmModalState;
+    if (!type || !id) return;
+
+    try {
+      await axios.delete(`http://localhost:3000/api/permanent/${type}/${id}`);
+      fetchDeleted();
+      addToast('Elemento eliminado permanentemente', 'success');
+    } catch (error) {
+      console.error(`Error deleting ${type}:`, error);
+      addToast('Error al eliminar', 'error');
+    }
+  };
+
+  const handleGanttTaskUpdate = async (taskId, updates) => {
+    try {
+      await axios.put(`http://localhost:3000/api/tasks/${taskId}`, updates);
+      fetchProjects(); // Refresh to sync state
+      addToast('Tarea actualizada', 'success');
+    } catch (error) {
+      console.error('Error updating task from Gantt:', error);
+      addToast('Error al actualizar tarea', 'error');
+    }
+  };
+
+  const displayedProjects = projects.filter(p => {
+    if (viewMode === 'archived') return p.is_archived;
+    if (viewMode === 'active') return !p.is_archived;
+    return false;
+  });
+
+  const handleLogout = () => {
+    setProjects([]); // Clear projects on logout
+    setDeletedData({ projects: [], tasks: [] }); // Clear deleted items
+    authLogout();
+  };
+
+  if (!isAuthenticated) {
+    return <Login />;
+  }
+
+  return (
+    <div className={viewMode === 'gantt' ? "app-container-full" : "app-container"}>
+      <header className="app-header">
+        <h1>Mis Tareas y Proyectos</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ fontSize: '14px', color: '#666' }}>Hola, {user?.username}</span>
+          <button onClick={handleLogout} style={{ padding: '5px 10px', fontSize: '12px', cursor: 'pointer', background: '#e5e7eb', border: '1px solid #ccc', borderRadius: '4px' }}>Cerrar Sesión</button>
+        </div>
+      </header>
+
+      {viewMode === 'active' && (
+        <section className="create-project-section">
+          <form onSubmit={handleCreateProject} className="project-form">
+            <input
+              type="text"
+              className="project-input"
+              placeholder="Nuevo Título de Proyecto..."
+              value={newProjectTitle}
+              onChange={(e) => setNewProjectTitle(e.target.value)}
+            />
+            <button type="submit" className="project-button">
+              <Plus size={20} /> Crear
+            </button>
+          </form>
+        </section>
+      )}
+
+      <div className="view-toggle-container">
+        <button
+          className={`view-toggle-btn ${viewMode === 'active' ? 'active' : ''}`}
+          onClick={() => setViewMode('active')}
+        >
+          Activos
+        </button>
+        <button
+          className={`view-toggle-btn ${viewMode === 'calendar' ? 'active' : ''}`}
+          onClick={() => setViewMode('calendar')}
+        >
+          Calendario
+        </button>
+        <button
+          className={`view-toggle-btn ${viewMode === 'gantt' ? 'active' : ''}`}
+          onClick={() => setViewMode('gantt')}
+        >
+          Diagrama Gantt
+        </button>
+        <button
+          className={`view-toggle-btn ${viewMode === 'archived' ? 'active' : ''}`}
+          onClick={() => setViewMode('archived')}
+        >
+          Archivados
+        </button>
+        <button
+          className={`view-toggle-btn ${viewMode === 'deleted' ? 'active' : ''}`}
+          onClick={() => setViewMode('deleted')}
+          style={{
+            backgroundColor: viewMode === 'deleted' ? '#fee2e2' : 'transparent',
+            color: viewMode === 'deleted' ? '#ef4444' : '#6b7280'
+          }}
+        >
+          Eliminados
+        </button>
+        {user?.role === 'admin' && (
+          <button
+            className={`view-toggle-btn ${viewMode === 'users' ? 'active' : ''}`}
+            onClick={() => setViewMode('users')}
+            style={{
+              backgroundColor: viewMode === 'users' ? '#e0f2fe' : 'transparent',
+              color: viewMode === 'users' ? '#0284c7' : '#6b7280'
+            }}
+          >
+            Usuarios
+          </button>
+        )}
+      </div>
+
+      <div className="content-area" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        {viewMode === 'active' && (
+          <div className="projects-list">
+            {displayedProjects.map(project => (
+              <ProjectItem
+                key={project.id}
+                project={project}
+                onUpdate={fetchProjects}
+              />
+            ))}
+            {displayedProjects.length === 0 && (
+              <p className="no-projects">No hay proyectos activos.</p>
+            )}
+          </div>
+        )}
+
+        {viewMode === 'calendar' && (
+          <CalendarView projects={projects} onNavigateToProject={handleNavigateToProject} />
+        )}
+
+        {viewMode === 'gantt' && (
+          <div style={{ flex: 1, padding: '20px', overflow: 'hidden' }}>
+            <GanttChart tasks={allTasks} onTaskUpdate={handleGanttTaskUpdate} />
+          </div>
+        )}
+
+        {viewMode === 'archived' && (
+          <div className="projects-list">
+            {displayedProjects.map(project => (
+              <ProjectItem
+                key={project.id}
+                project={project}
+                onUpdate={fetchProjects}
+              />
+            ))}
+            {displayedProjects.length === 0 && (
+              <p className="no-projects">No hay proyectos archivados.</p>
+            )}
+          </div>
+        )}
+
+        {viewMode === 'deleted' && (
+          <RecycleBinView
+            deletedProjects={deletedData.projects}
+            deletedTasks={deletedData.tasks}
+            onRestore={handleRestore}
+            onDeletePermanent={handlePermanentDelete}
+          />
+        )}
+
+        {viewMode === 'users' && user?.role === 'admin' && (
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            <UsersView />
+          </div>
+        )}
+      </div>
+
+      <ConfirmationModal
+        isOpen={confirmModalState.isOpen}
+        onClose={() => setConfirmModalState({ ...confirmModalState, isOpen: false })}
+        onConfirm={executePermanentDelete}
+        title="¿Eliminar permanentemente?"
+        message="¿Estás seguro de que quieres eliminar esto permanentemente? Esta acción NO se puede deshacer."
+        confirmText="Eliminar"
+        isDestructive={true}
+      />
+    </div>
+  );
+}
+
+// Wrapper to force remount when user changes
+function AppWrapper() {
+  const { user, loading } = useAuth();
+
+  if (loading) return <div>Cargando...</div>;
+
+  // key={user?.id} forces a complete remount of AppContent when user changes
+  return <AppContent key={user?.id || 'guest'} />;
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <ToastProvider>
+        <AppWrapper />
+      </ToastProvider>
+    </AuthProvider>
+  );
+}
+
+export default App;
+
