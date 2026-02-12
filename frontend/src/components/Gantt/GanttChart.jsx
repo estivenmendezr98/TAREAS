@@ -5,45 +5,85 @@ import * as XLSX from 'xlsx';
 import { Download, ChevronLeft, ChevronRight, FileSpreadsheet, FileIcon } from 'lucide-react';
 
 // --- ESTILOS OPTIMIZADOS (BALANCED SIZE) ---
-const styles = {
+// --- ESTILOS OPTIMIZADOS (DYNAMIC) ---
+const getStyles = (isMobile, isSidebarCollapsed) => ({
     container: { display: 'flex', flexDirection: 'column', height: '100%', border: '1px solid #e0e0e0', fontFamily: 'sans-serif', backgroundColor: 'white', overflow: 'hidden' },
     mainWrapper: { display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' },
-    // SIDEBAR: 350px (Standard Wide)
-    sidebar: { width: '350px', minWidth: '350px', display: 'flex', flexDirection: 'column', borderRight: '2px solid #ddd', zIndex: 20, backgroundColor: 'white' },
-    // HEADER HEIGHT: 90px (3 filas de 30px)
-    sidebarHeader: { height: '100px', minHeight: '100px', borderBottom: '1px solid #ccc', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '10px', backgroundColor: '#f9fafb', fontSize: '14px', gap: '8px' },
-    sidebarBody: { flex: 1, overflow: 'hidden' },
+    // CONTROL BAR
+    controlBar: {
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '10px',
+        padding: '10px',
+        backgroundColor: '#fff',
+        borderBottom: '1px solid #e0e0e0',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        minHeight: 'auto'
+    },
+    sidebar: {
+        width: isSidebarCollapsed ? (isMobile ? '100px' : '40px') : (isMobile ? '280px' : '350px'), // 100px on mobile collapsed to show some text
+        minWidth: isSidebarCollapsed ? (isMobile ? '100px' : '40px') : (isMobile ? '280px' : '350px'),
+        display: 'flex', flexDirection: 'column',
+        borderRight: '2px solid #ddd',
+        zIndex: isMobile && !isSidebarCollapsed ? 50 : 20,
+        backgroundColor: 'white',
+        transition: 'width 0.3s ease, transform 0.3s ease',
+        position: isMobile && !isSidebarCollapsed ? 'absolute' : 'relative',
+        height: isMobile && !isSidebarCollapsed ? '100%' : 'auto',
+        boxShadow: isMobile && !isSidebarCollapsed ? '2px 0 10px rgba(0,0,0,0.5)' : 'none',
+        left: 0, top: 0
+    },
+    backdrop: {
+        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.3)', zIndex: 40,
+        display: isMobile && !isSidebarCollapsed ? 'block' : 'none'
+    },
+    // HEADER
+    sidebarHeader: {
+        height: '100px',
+        minHeight: '100px',
+        borderBottom: '1px solid #ccc',
+        display: 'flex',
+        flexDirection: 'row', // Align toggle and title horizontally
+        alignItems: 'center',
+        padding: '10px',
+        backgroundColor: '#f9fafb',
+        gap: '10px',
+        overflow: 'hidden'
+    },
+    sidebarBody: {
+        flex: 1,
+        overflow: 'auto', // Always allow independent scroll if needed, sync handles the rest
+        overflowX: 'hidden'
+    },
     canvas: { flex: 1, overflow: 'auto', position: 'relative', display: 'flex', flexDirection: 'column' },
-    // HEADER HEIGHT: 100px (Matching Sidebar)
+    // HEADER ROW
     headerContainer: { height: '100px', minHeight: '100px', position: 'sticky', top: 0, zIndex: 30, backgroundColor: '#f9fafb', borderBottom: '1px solid #ccc', overflow: 'hidden' },
-    // HEADER ROWS: 30px
     row: { display: 'flex', height: '30px', boxSizing: 'border-box' },
-    cellHeader: { display: 'flex', alignItems: 'center', justifyContent: 'center', borderRight: '1px solid #e0e0e0', fontSize: '12px', fontWeight: '600', color: '#555', boxSizing: 'border-box' },
-    cellDay: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRight: '1px solid #eee', fontSize: '11px', height: '100%', boxSizing: 'border-box' },
+    cellHeader: { display: 'flex', alignItems: 'center', justifyContent: 'center', borderRight: '1px solid #e0e0e0', fontSize: isMobile ? '10px' : '12px', fontWeight: '600', color: '#555', boxSizing: 'border-box' },
+    cellDay: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRight: '1px solid #eee', fontSize: isMobile ? '9px' : '11px', height: '100%', boxSizing: 'border-box' },
     bodyContainer: { position: 'relative' },
-    // GROUP HEADER: 30px
-    groupHeader: { height: '30px', backgroundColor: '#f3f4f6', display: 'flex', alignItems: 'center', paddingLeft: '10px', fontWeight: 'bold', fontSize: '12px', color: '#555', borderBottom: '1px solid #e0e0e0', boxSizing: 'border-box' },
-    // BODY ROWS: 60px (Suficiente para texto doble linea)
+    groupHeader: { height: '30px', backgroundColor: '#f3f4f6', display: 'flex', alignItems: 'center', paddingLeft: '10px', fontWeight: 'bold', fontSize: '12px', color: '#555', borderBottom: '1px solid #e0e0e0', boxSizing: 'border-box', overflow: 'hidden', whiteSpace: 'nowrap' },
     gridRow: { display: 'flex', height: '60px', borderBottom: '1px solid #f0f0f0', position: 'relative', boxSizing: 'border-box' },
     gridCell: { borderRight: '1px solid #f9f9f9', height: '100%', boxSizing: 'border-box' },
-    // TASK ITEM: 60px, wrapping
     taskItem: {
         height: '60px',
-        padding: '5px 15px',
+        padding: isSidebarCollapsed ? (isMobile ? '5px' : '0') : (isMobile ? '5px' : '5px 15px'),
         borderBottom: '1px solid #f0f0f0',
         display: 'flex',
         alignItems: 'center',
-        whiteSpace: 'normal',
+        justifyContent: isSidebarCollapsed && !isMobile ? 'center' : 'flex-start',
+        whiteSpace: isMobile || isSidebarCollapsed ? 'normal' : 'normal', // Allow wrap on mobile even if collapsed? No, space is tight.
         lineHeight: '1.2',
         overflow: 'hidden',
-        fontSize: '12px',
+        fontSize: isMobile ? '10px' : '12px',
         color: '#333'
     },
-    // BAR: 34px alto
-    bar: { position: 'absolute', height: '34px', backgroundColor: '#3b82f6', borderRadius: '4px', top: '13px', display: 'flex', alignItems: 'center', padding: '0 8px', color: 'white', fontSize: '11px', cursor: 'grab', zIndex: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', userSelect: 'none' },
+    bar: { position: 'absolute', height: '34px', backgroundColor: '#3b82f6', borderRadius: '4px', top: '13px', display: 'flex', alignItems: 'center', padding: '0 8px', color: 'white', fontSize: isMobile ? '9px' : '11px', cursor: 'grab', zIndex: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', userSelect: 'none' },
     resizeL: { position: 'absolute', left: 0, top: 0, bottom: 0, width: '15px', cursor: 'w-resize', zIndex: 20 },
     resizeR: { position: 'absolute', right: 0, top: 0, bottom: 0, width: '15px', cursor: 'e-resize', zIndex: 20 }
-};
+});
 
 // --- HELPERS ---
 const parseLocalDate = (input) => {
@@ -67,11 +107,32 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
     const [selectedMonth, setSelectedMonth] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
     const [viewScale, setViewScale] = useState('day'); // 'day' | 'week'
     const [groupingMode, setGroupingMode] = useState('project'); // 'project' | 'week'
-    const columnWidth = viewScale === 'day' ? 50 : 250; // Ancho de columna
+
+    // Responsive Logic
+    const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+    useEffect(() => {
+        const handleResize = () => {
+            const mobile = window.innerWidth < 768;
+            setIsMobile(mobile);
+            if (!mobile) setIsSidebarCollapsed(false); // Auto-expand on desktop
+            else setIsSidebarCollapsed(true); // Auto-collapse on mobile initially? Maybe not. Let's start expanded but smaller.
+        };
+        handleResize(); // Init
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    // Widths
+    const columnWidth = isMobile ? (viewScale === 'day' ? 30 : 150) : (viewScale === 'day' ? 50 : 250);
+    const styles = useMemo(() => getStyles(isMobile, isSidebarCollapsed), [isMobile, isSidebarCollapsed]);
+
     const canvasRef = useRef(null);
     const sidebarRef = useRef(null);
     const containerRef = useRef(null);
     const mainWrapperRef = useRef(null);
+    const isSyncingRef = useRef(false); // Flag to prevent scroll loop
 
     // 1. DATA NORMALIZER
     const { groupedTasks, flatTasks } = useMemo(() => {
@@ -215,7 +276,25 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
         }
     };
 
-    const handleScroll = (e) => { if (sidebarRef.current) sidebarRef.current.scrollTop = e.target.scrollTop; };
+    const handleScroll = (e) => {
+        if (!sidebarRef.current) return;
+        if (isSyncingRef.current) {
+            isSyncingRef.current = false;
+            return;
+        }
+        isSyncingRef.current = true;
+        sidebarRef.current.scrollTop = e.target.scrollTop;
+    };
+
+    const handleSidebarScroll = (e) => {
+        if (!canvasRef.current) return;
+        if (isSyncingRef.current) {
+            isSyncingRef.current = false;
+            return;
+        }
+        isSyncingRef.current = true;
+        canvasRef.current.scrollTop = e.target.scrollTop;
+    };
 
     // --- NAVIGATION ---
     const handlePrevMonth = () => {
@@ -412,31 +491,39 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
     // --- DRAG CON VISUAL FEEDBACK (REAL-TIME) ---
     const [dragState, setDragState] = useState(null);
 
-    const onMouseDown = (e, task, type) => {
-        e.preventDefault();
+    const onStartDrag = (e, task, type) => {
+        // Handle both Mouse and Touch events
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+
+        // Prevent default only if it's not a scroll interaction (simplification: always prevent for drag handles)
+        // e.preventDefault(); // Might block scrolling on touch if not careful, but for drag handle it's ok.
         e.stopPropagation();
+
         setDragState({
             type, // 'move', 'resizeL', 'resizeR'
             taskId: task.id,
-            startX: e.clientX,
-            currentX: e.clientX,
+            startX: clientX,
+            currentX: clientX,
             originalStart: task._start,
             originalEnd: task._end
         });
     };
 
     useEffect(() => {
-        const onMouseMove = (e) => {
+        const onMove = (e) => {
             if (!dragState) return;
-            setDragState(prev => ({ ...prev, currentX: e.clientX }));
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            setDragState(prev => ({ ...prev, currentX: clientX }));
             document.body.style.cursor = dragState.type === 'move' ? 'grabbing' : 'col-resize';
         };
 
-        const onMouseUp = (e) => {
+        const onEnd = (e) => {
             if (!dragState) return;
             document.body.style.cursor = 'default';
 
-            const pixelDelta = e.clientX - dragState.startX;
+            // For touch end, clientX might be missing in 'e', use last known currentX from state?
+            // Actually 'currentX' in state is updated on move.
+            const pixelDelta = dragState.currentX - dragState.startX;
 
             let dayDelta = 0;
             if (viewScale === 'day') {
@@ -461,6 +548,10 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
                             descripcion: originalTask.descripcion,
                             start_date: formatLocalDate(newS),
                             fecha_objetivo: formatLocalDate(newE)
+                        }, {
+                            start_date: formatLocalDate(originalStart),
+                            fecha_objetivo: formatLocalDate(originalEnd),
+                            descripcion: originalTask.descripcion
                         });
                     }
                 }
@@ -469,57 +560,95 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
         };
 
         if (dragState) {
-            window.addEventListener('mousemove', onMouseMove);
-            window.addEventListener('mouseup', onMouseUp);
+            window.addEventListener('mousemove', onMove);
+            window.addEventListener('mouseup', onEnd);
+            window.addEventListener('touchmove', onMove);
+            window.addEventListener('touchend', onEnd);
         }
         return () => {
-            window.removeEventListener('mousemove', onMouseMove);
-            window.removeEventListener('mouseup', onMouseUp);
+            window.removeEventListener('mousemove', onMove);
+            window.removeEventListener('mouseup', onEnd);
+            window.removeEventListener('touchmove', onMove);
+            window.removeEventListener('touchend', onEnd);
         };
     }, [dragState, tasks, onTaskUpdate, viewScale, columnWidth]);
 
     return (
         <div style={styles.container} ref={containerRef}>
+            <div style={styles.controlBar}>
+                {/* Navigation & Month */}
+                {/* Navigation & Month */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <button onClick={handlePrevMonth} aria-label="Mes Anterior" style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '2px' }}><ChevronLeft size={20} /></button>
+                    <span style={{ fontWeight: 'bold', fontSize: isMobile ? '14px' : '16px' }} id="month-label">{selectedMonth.toLocaleString('es-ES', { month: 'long', year: 'numeric' }).toUpperCase()}</span>
+                    <button onClick={handleNextMonth} aria-label="Mes Siguiente" style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '2px' }}><ChevronRight size={20} /></button>
+                </div>
+
+                {/* View Scale & Grouping */}
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: '5px' }} role="group" aria-label="Escala de vista">
+                        <button onClick={() => setViewScale('day')} aria-pressed={viewScale === 'day'} style={{ padding: '4px 10px', fontSize: '12px', borderRadius: '4px', border: '1px solid #ccc', backgroundColor: viewScale === 'day' ? '#3b82f6' : 'white', color: viewScale === 'day' ? 'white' : '#333', cursor: 'pointer' }}>Día</button>
+                        <button onClick={() => setViewScale('week')} aria-pressed={viewScale === 'week'} style={{ padding: '4px 10px', fontSize: '12px', borderRadius: '4px', border: '1px solid #ccc', backgroundColor: viewScale === 'week' ? '#3b82f6' : 'white', color: viewScale === 'week' ? 'white' : '#333', cursor: 'pointer' }}>Semana</button>
+                    </div>
+
+                    <select
+                        value={groupingMode}
+                        onChange={(e) => setGroupingMode(e.target.value)}
+                        aria-label="Agrupar por"
+                        style={{ padding: '4px', borderRadius: '4px', border: '1px solid #ccc', fontSize: '12px' }}
+                    >
+                        <option value="project">Por Proyecto</option>
+                        <option value="week">Por Semana</option>
+                    </select>
+                </div>
+
+                {/* Export Tools */}
+                <div style={{ display: 'flex', gap: '5px' }}>
+                    {/* Export Tools */}
+                    <div style={{ display: 'flex', gap: '5px' }}>
+                        <button onClick={exportToPDF} aria-label="Exportar a PDF" title="PDF" style={{ padding: '4px', borderRadius: '4px', border: '1px solid #ccc', background: 'white', cursor: 'pointer' }}><FileIcon size={18} color="#e11d48" /></button>
+                        <button onClick={exportToExcel} aria-label="Exportar a Excel" title="Excel" style={{ padding: '4px', borderRadius: '4px', border: '1px solid #ccc', background: 'white', cursor: 'pointer' }}><FileSpreadsheet size={18} color="#10b981" /></button>
+                    </div>
+                </div>
+            </div>
+
             <div style={styles.mainWrapper} ref={mainWrapperRef}>
+                {/* BACKDROP */}
+                <div style={styles.backdrop} onClick={() => setIsSidebarCollapsed(true)} />
+
                 <div style={styles.sidebar}>
                     <div style={styles.sidebarHeader}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                <button onClick={handlePrevMonth} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '2px' }}><ChevronLeft size={16} /></button>
-                                <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{selectedMonth.toLocaleString('es-ES', { month: 'long', year: 'numeric' }).toUpperCase()}</span>
-                                <button onClick={handleNextMonth} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '2px' }}><ChevronRight size={16} /></button>
-                            </div>
-                            <div style={{ display: 'flex', gap: '5px' }}>
-                                <button onClick={() => setViewScale('day')} style={{ padding: '2px 8px', fontSize: '10px', borderRadius: '4px', border: '1px solid #ccc', backgroundColor: viewScale === 'day' ? '#3b82f6' : 'white', color: viewScale === 'day' ? 'white' : '#333', cursor: 'pointer' }}>Día</button>
-                                <button onClick={() => setViewScale('week')} style={{ padding: '2px 8px', fontSize: '10px', borderRadius: '4px', border: '1px solid #ccc', backgroundColor: viewScale === 'week' ? '#3b82f6' : 'white', color: viewScale === 'week' ? 'white' : '#333', cursor: 'pointer' }}>Semana</button>
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                            <select
-                                value={groupingMode}
-                                onChange={(e) => setGroupingMode(e.target.value)}
-                                style={{ padding: '2px', borderRadius: '4px', border: '1px solid #ccc', fontSize: '11px', flex: 1, marginRight: '5px' }}
-                            >
-                                <option value="project">Por Proyecto</option>
-                                <option value="week">Por Semana</option>
-                            </select>
-
-                            <div style={{ display: 'flex', gap: '5px' }}>
-                                <button onClick={exportToPDF} title="PDF" style={{ padding: '4px', borderRadius: '4px', border: '1px solid #ccc', background: 'white', cursor: 'pointer' }}><FileIcon size={14} color="#e11d48" /></button>
-                                <button onClick={exportToExcel} title="Excel" style={{ padding: '4px', borderRadius: '4px', border: '1px solid #ccc', background: 'white', cursor: 'pointer' }}><FileSpreadsheet size={14} color="#10b981" /></button>
-                            </div>
-                        </div>
+                        {/* Sidebar Toggle & Title only */}
+                        <button
+                            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                            aria-label={isSidebarCollapsed ? "Expandir barra lateral" : "Colapsar barra lateral"}
+                            aria-expanded={!isSidebarCollapsed}
+                            style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid #ccc', background: '#fff', fontSize: '12px', cursor: 'pointer', marginRight: '5px' }}
+                        >
+                            {isSidebarCollapsed ? '>>' : '<<'}
+                        </button>
+                        <span style={{ fontWeight: 'bold', fontSize: '14px', whiteSpace: 'nowrap', display: isSidebarCollapsed && isMobile ? 'none' : 'block' }}>
+                            Tareas
+                        </span>
                     </div>
-                    <div style={styles.sidebarBody} ref={sidebarRef}>
+                    <div style={styles.sidebarBody} ref={sidebarRef} onScroll={handleSidebarScroll}>
                         {Object.entries(groupedTasks).map(([projectTitle, projectTasks]) => (
                             <div key={projectTitle}>
-                                <div style={styles.groupHeader} title={projectTitle}>{projectTitle}</div>
+                                <div style={styles.groupHeader} title={projectTitle}>
+                                    {isSidebarCollapsed ? projectTitle.charAt(0) : projectTitle}
+                                </div>
                                 {projectTasks.map(t => (
-                                    <div key={t.id} style={styles.taskItem} title={t.descripcion}>
-                                        <span style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                    <div key={t.id} style={styles.taskItem} title={t.descripcion} tabIndex="0" role="listitem">
+                                        <span style={{
+                                            display: isSidebarCollapsed && !isMobile ? 'none' : '-webkit-box',
+                                            WebkitLineClamp: isMobile ? 3 : 3,
+                                            WebkitBoxOrient: 'vertical',
+                                            overflow: 'hidden',
+                                            width: '100%'
+                                        }}>
                                             {t.descripcion}
                                         </span>
+                                        {isSidebarCollapsed && !isMobile && <span style={{ fontSize: '10px', color: '#888' }}>#</span>}
                                     </div>
                                 ))}
                             </div>
@@ -588,7 +717,48 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
                                     return (
                                         <div key={task.id} style={{ ...styles.gridRow, zIndex: 10 }}>
                                             <div
-                                                onMouseDown={(e) => onMouseDown(e, task, 'move')}
+                                                onMouseDown={(e) => onStartDrag(e, task, 'move')}
+                                                onTouchStart={(e) => onStartDrag(e, task, 'move')}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'ArrowLeft') {
+                                                        const newS = new Date(task._start);
+                                                        const newE = new Date(task._end);
+                                                        const delta = viewScale === 'day' ? 1 : 7;
+                                                        newS.setDate(newS.getDate() - delta);
+                                                        newE.setDate(newE.getDate() - delta);
+                                                        if (onTaskUpdate) {
+                                                            onTaskUpdate(task.id, {
+                                                                descripcion: task.descripcion,
+                                                                start_date: formatLocalDate(newS),
+                                                                fecha_objetivo: formatLocalDate(newE)
+                                                            }, {
+                                                                start_date: formatLocalDate(task._start),
+                                                                fecha_objetivo: formatLocalDate(task._end),
+                                                                descripcion: task.descripcion
+                                                            });
+                                                        }
+                                                    } else if (e.key === 'ArrowRight') {
+                                                        const newS = new Date(task._start);
+                                                        const newE = new Date(task._end);
+                                                        const delta = viewScale === 'day' ? 1 : 7;
+                                                        newS.setDate(newS.getDate() + delta);
+                                                        newE.setDate(newE.getDate() + delta);
+                                                        if (onTaskUpdate) {
+                                                            onTaskUpdate(task.id, {
+                                                                descripcion: task.descripcion,
+                                                                start_date: formatLocalDate(newS),
+                                                                fecha_objetivo: formatLocalDate(newE)
+                                                            }, {
+                                                                start_date: formatLocalDate(task._start),
+                                                                fecha_objetivo: formatLocalDate(task._end),
+                                                                descripcion: task.descripcion
+                                                            });
+                                                        }
+                                                    }
+                                                }}
+                                                tabIndex="0"
+                                                role="button"
+                                                aria-label={`Tarea: ${task.descripcion}. Inicio: ${formatLocalDate(task._start)}. Fin: ${formatLocalDate(task._end)}`}
                                                 style={{
                                                     ...styles.bar,
                                                     left: `${left}px`,
@@ -597,12 +767,19 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
                                                     cursor: isDragging ? 'grabbing' : 'grab',
                                                     zIndex: isDragging ? 100 : 10,
                                                     boxShadow: isDragging ? '0 1px 3px rgba(0,0,0,0.2)' : '0 1px 2px rgba(0,0,0,0.2)',
-                                                    userSelect: 'none'
+                                                    userSelect: 'none',
+                                                    touchAction: 'none' // Prevent scrolling while dragging
                                                 }}
                                             >
-                                                <div style={styles.resizeL} onMouseDown={(e) => onMouseDown(e, task, 'resizeL')} />
+                                                <div style={styles.resizeL}
+                                                    onMouseDown={(e) => onStartDrag(e, task, 'resizeL')}
+                                                    onTouchStart={(e) => onStartDrag(e, task, 'resizeL')}
+                                                />
                                                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', pointerEvents: 'none', paddingLeft: '5px' }}>{task.descripcion}</span>
-                                                <div style={styles.resizeR} onMouseDown={(e) => onMouseDown(e, task, 'resizeR')} />
+                                                <div style={styles.resizeR}
+                                                    onMouseDown={(e) => onStartDrag(e, task, 'resizeR')}
+                                                    onTouchStart={(e) => onStartDrag(e, task, 'resizeR')}
+                                                />
                                             </div>
                                         </div>
                                     );
@@ -611,8 +788,8 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
                         ))}
                     </div>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 export default GanttChart;

@@ -13,12 +13,13 @@ import Login from './components/Login';
 import './index.css';
 
 function AppContent() {
-  const { isAuthenticated, logout: authLogout, user } = useAuth();
+  const { isAuthenticated, logout: authLogout, user, token } = useAuth();
   const [projects, setProjects] = useState([]);
   const [newProjectTitle, setNewProjectTitle] = useState('');
   const [viewMode, setViewMode] = useState('active'); // 'active', 'archived', 'calendar', 'deleted', 'gantt'
   const [deletedData, setDeletedData] = useState({ projects: [], tasks: [] });
   const [confirmModalState, setConfirmModalState] = useState({ isOpen: false, type: null, id: null });
+  const [undoStack, setUndoStack] = useState([]); // Stack of actions to undo
   const { addToast } = useToast();
 
   const fetchProjects = useCallback(async () => {
@@ -40,8 +41,10 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    fetchProjects();
-  }, [fetchProjects]);
+    if (isAuthenticated && token) {
+      fetchProjects();
+    }
+  }, [fetchProjects, isAuthenticated, token]);
 
   useEffect(() => {
     if (viewMode === 'deleted' && user) {
@@ -115,11 +118,56 @@ function AppContent() {
     }
   };
 
-  const handleGanttTaskUpdate = async (taskId, updates) => {
+  const handleUndo = useCallback(async () => {
+    if (undoStack.length === 0) return;
+
+    const action = undoStack[undoStack.length - 1];
+    const newStack = undoStack.slice(0, -1);
+    setUndoStack(newStack);
+
+    try {
+      if (action.type === 'TASK_UPDATE') {
+        const { taskId, previousValues } = action.payload;
+        // Revert to previous values
+        await axios.put(`http://localhost:3000/api/tasks/${taskId}`, {
+          start_date: previousValues.start_date,
+          fecha_objetivo: previousValues.fecha_objetivo,
+          descripcion: previousValues.descripcion
+        });
+        fetchProjects();
+        addToast('Acción deshecha', 'info');
+      }
+    } catch (error) {
+      console.error('Error undoing action:', error);
+      addToast('Error al deshacer', 'error');
+    }
+  }, [undoStack, fetchProjects, addToast]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ctrl+Z
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleUndo]);
+
+  const handleGanttTaskUpdate = async (taskId, updates, previousValues) => {
     try {
       await axios.put(`http://localhost:3000/api/tasks/${taskId}`, updates);
       fetchProjects(); // Refresh to sync state
       addToast('Tarea actualizada', 'success');
+
+      if (previousValues) {
+        setUndoStack(prev => [...prev, {
+          type: 'TASK_UPDATE',
+          payload: { taskId, previousValues }
+        }]);
+      }
     } catch (error) {
       console.error('Error updating task from Gantt:', error);
       addToast('Error al actualizar tarea', 'error');

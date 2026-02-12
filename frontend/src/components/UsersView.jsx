@@ -7,6 +7,13 @@ const UsersView = () => {
     const [newUserStart, setNewUser] = useState({ username: '', password: '', role: 'user' });
     const [editingUser, setEditingUser] = useState(null);
     const { addToast } = useToast();
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         fetchUsers();
@@ -63,7 +70,7 @@ const UsersView = () => {
 
             <div style={{ marginBottom: '20px', padding: '15px', background: '#f9fafb', borderRadius: '8px' }}>
                 <h3>{editingUser ? 'Editar Usuario' : 'Crear Nuevo Usuario'}</h3>
-                <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '10px', alignItems: isMobile ? 'stretch' : 'center' }}>
                     <input
                         type="text"
                         placeholder="Usuario"
@@ -99,43 +106,74 @@ const UsersView = () => {
                 </form>
             </div>
 
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                    <tr style={{ background: '#e5e7eb', textAlign: 'left' }}>
-                        <th style={{ padding: '10px', borderBottom: '1px solid #ccc' }}>ID</th>
-                        <th style={{ padding: '10px', borderBottom: '1px solid #ccc' }}>Usuario</th>
-                        <th style={{ padding: '10px', borderBottom: '1px solid #ccc' }}>Rol</th>
-                        <th style={{ padding: '10px', borderBottom: '1px solid #ccc' }}>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
+            {isMobile ? (
+                // MOBILE CARD VIEW
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {users.map(user => (
-                        <tr key={user.id} style={{ borderBottom: '1px solid #eee' }}>
-                            <td style={{ padding: '10px' }}>{user.id}</td>
-                            <td style={{ padding: '10px' }}>{user.username}</td>
-                            <td style={{ padding: '10px' }}>
+                        <div key={user.id} style={{ padding: '15px', background: 'white', borderRadius: '8px', border: '1px solid #eee', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                <span style={{ fontWeight: 'bold', fontSize: '14px', color: '#333' }}>{user.username}</span>
                                 <span style={{
-                                    padding: '2px 8px',
-                                    borderRadius: '12px',
+                                    fontSize: '11px',
+                                    color: '#666',
                                     background: user.role === 'admin' ? '#dbeafe' : '#f3f4f6',
                                     color: user.role === 'admin' ? '#1e40af' : '#374151',
-                                    fontSize: '0.85rem'
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    width: 'fit-content'
                                 }}>
                                     {user.role}
                                 </span>
-                            </td>
-                            <td style={{ padding: '10px' }}>
-                                <button
-                                    onClick={() => handleEdit(user)}
-                                    style={{ padding: '4px 8px', fontSize: '12px', background: 'transparent', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer', color: '#4b5563' }}
-                                >
-                                    Editar
-                                </button>
-                            </td>
-                        </tr>
+                            </div>
+                            <button
+                                onClick={() => handleEdit(user)}
+                                style={{ padding: '6px 12px', fontSize: '12px', background: 'white', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer', color: '#4b5563' }}
+                            >
+                                Editar
+                            </button>
+                        </div>
                     ))}
-                </tbody>
-            </table>
+                </div>
+            ) : (
+                // DESKTOP TABLE VIEW
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                        <tr style={{ background: '#e5e7eb', textAlign: 'left' }}>
+                            <th style={{ padding: '10px', borderBottom: '1px solid #ccc' }}>ID</th>
+                            <th style={{ padding: '10px', borderBottom: '1px solid #ccc' }}>Usuario</th>
+                            <th style={{ padding: '10px', borderBottom: '1px solid #ccc' }}>Rol</th>
+                            <th style={{ padding: '10px', borderBottom: '1px solid #ccc' }}>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {users.map(user => (
+                            <tr key={user.id} style={{ borderBottom: '1px solid #eee' }}>
+                                <td style={{ padding: '10px' }}>{user.id}</td>
+                                <td style={{ padding: '10px' }}>{user.username}</td>
+                                <td style={{ padding: '10px' }}>
+                                    <span style={{
+                                        padding: '2px 8px',
+                                        borderRadius: '12px',
+                                        background: user.role === 'admin' ? '#dbeafe' : '#f3f4f6',
+                                        color: user.role === 'admin' ? '#1e40af' : '#374151',
+                                        fontSize: '0.85rem'
+                                    }}>
+                                        {user.role}
+                                    </span>
+                                </td>
+                                <td style={{ padding: '10px' }}>
+                                    <button
+                                        onClick={() => handleEdit(user)}
+                                        style={{ padding: '4px 8px', fontSize: '12px', background: 'transparent', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer', color: '#4b5563' }}
+                                    >
+                                        Editar
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            )}
         </div>
     );
 };

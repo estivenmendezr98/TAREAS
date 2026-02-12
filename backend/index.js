@@ -7,6 +7,8 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const jwt = require('jsonwebtoken');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const JWT_SECRET = process.env.JWT_SECRET || 'secret_key_123';
 
 const app = express();
@@ -34,7 +36,25 @@ const upload = multer({
 });
 
 // Middleware
-app.use(cors());
+app.use(helmet()); // Secure HTTP headers
+
+// Rate Limiting (DDoS Protection)
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per windowMs
+    message: 'Too many requests from this IP, please try again later.',
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+app.use('/api/', limiter); // Apply to API routes
+
+// CORS Configuration (Restrict to frontend origin)
+const corsOptions = {
+    origin: ['http://localhost:5173', 'http://localhost:3000'], // Allow frontend dev server and self
+    optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
+
 app.use(express.json({ limit: '500mb' })); // Increase JSON limit just in case
 app.use('/uploads', express.static('uploads')); // Serve uploaded files statically
 
@@ -204,9 +224,6 @@ app.post('/api/login', async (req, res) => {
         const user = result.rows[0];
 
         if (user && user.password === password) { // Simple check for now
-            // DEBUG: Log user object to see if ID exists
-            console.log('Login attempt for:', username);
-            console.log('User found in DB:', user);
 
             // Fallback for admin if ID is somehow missing (shouldn't happen but...)
             const userId = user.id || (user.username === 'admin' ? 1 : null);
