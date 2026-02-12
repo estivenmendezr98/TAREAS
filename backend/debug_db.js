@@ -54,6 +54,11 @@ async function checkDB() {
             console.log('Query FAILED with error:', err.message);
         }
 
+        // Check task_evidence paths
+        console.log('\n=== TASK EVIDENCE (First 20) ===');
+        const evidence = await pool.query('SELECT id, task_id, file_path FROM task_evidence ORDER BY id DESC LIMIT 20');
+        console.log(JSON.stringify(evidence.rows, null, 2));
+
     } catch (err) {
         console.error('Error:', err);
     } finally {

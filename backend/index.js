@@ -36,7 +36,9 @@ const upload = multer({
 });
 
 // Middleware
-app.use(helmet()); // Secure HTTP headers
+app.use(helmet({
+    crossOriginResourcePolicy: false, // Disable CORP to allow images to be loaded cross-origin
+}));
 
 // Rate Limiting (DDoS Protection)
 const limiter = rateLimit({
@@ -48,12 +50,8 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter); // Apply to API routes
 
-// CORS Configuration (Restrict to frontend origin)
-const corsOptions = {
-    origin: ['http://localhost:5173', 'http://localhost:3000'], // Allow frontend dev server and self
-    optionsSuccessStatus: 200
-};
-app.use(cors(corsOptions));
+// CORS Configuration (Allow All)
+app.use(cors());
 
 app.use(express.json({ limit: '500mb' })); // Increase JSON limit just in case
 app.use('/uploads', express.static('uploads')); // Serve uploaded files statically
