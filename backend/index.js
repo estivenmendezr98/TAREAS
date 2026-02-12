@@ -53,8 +53,10 @@ app.use('/api/', limiter); // Apply to API routes
 // CORS Configuration (Allow All)
 app.use(cors());
 
-app.use(express.json({ limit: '500mb' })); // Increase JSON limit just in case
-app.use('/uploads', express.static('uploads')); // Serve uploaded files statically
+app.use(express.json({ limit: '500mb' }));
+
+// Serve uploaded files statically
+app.use('/uploads', express.static('uploads'));
 
 // Database connection pool
 const pool = new Pool({
