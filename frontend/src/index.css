@@ -452,14 +452,13 @@ body {
 .task-actions {
   display: flex;
   gap: 0.25rem;
-  opacity: 0;
-  /* Hidden by default */
+  opacity: 1;
+  /* Always visible */
   transition: opacity 0.2s;
 }
 
 .task-item-container:hover .task-actions {
   opacity: 1;
-  /* Show on hover */
 }
 
 .evidence-badge {

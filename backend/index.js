@@ -170,6 +170,11 @@ const initDB = async () => {
             ALTER TABLE projects ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE;
         `);
 
+        // Add is_archived column to tasks (Migration)
+        await pool.query(`
+            ALTER TABLE tasks ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE;
+        `);
+
         // Add deleted_at column to projects (Migration for Recycle Bin)
         await pool.query(`
             ALTER TABLE projects ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP DEFAULT NULL;
@@ -329,7 +334,7 @@ app.get('/api/projects', authenticateToken, async (req, res) => {
         // Fetch tasks (exclude deleted) for the user's projects
         const taskQuery = `
             SELECT 
-                t.id, t.project_id, t.descripcion, t.completada, t.fecha_creacion, t.report_content,
+                t.id, t.project_id, t.descripcion, t.completada, t.fecha_creacion, t.report_content, t.is_archived,
                 TO_CHAR(t.start_date, 'YYYY-MM-DD') as start_date,
                 TO_CHAR(t.fecha_objetivo, 'YYYY-MM-DD') as fecha_objetivo
             FROM tasks t
@@ -404,24 +409,31 @@ app.post('/api/tasks', authenticateToken, async (req, res) => {
     }
 });
 
-// Update task (status, details, or report)
+// Update task (status, details, report, or archive)
 app.put('/api/tasks/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
-    const { completada, descripcion, fecha_objetivo, report_content } = req.body;
+    const { completada, descripcion, fecha_objetivo, report_content, is_archived } = req.body;
 
     try {
         let result;
         if (completada !== undefined) {
             result = await pool.query(
                 `UPDATE tasks SET completada = $1 WHERE id = $2 
-                 RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content,
+                 RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content, is_archived,
                            start_date::text as start_date, fecha_objetivo::text as fecha_objetivo`,
                 [completada, id]
+            );
+        } else if (is_archived !== undefined) {
+            result = await pool.query(
+                `UPDATE tasks SET is_archived = $1 WHERE id = $2 
+                 RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content, is_archived,
+                           start_date::text as start_date, fecha_objetivo::text as fecha_objetivo`,
+                [is_archived, id]
             );
         } else if (report_content !== undefined) {
             result = await pool.query(
                 `UPDATE tasks SET report_content = $1 WHERE id = $2 
-                 RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content,
+                 RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content, is_archived,
                            start_date::text as start_date, fecha_objetivo::text as fecha_objetivo`,
                 [report_content, id]
             );
@@ -431,14 +443,14 @@ app.put('/api/tasks/:id', authenticateToken, async (req, res) => {
                 const { start_date } = req.body;
                 result = await pool.query(
                     `UPDATE tasks SET descripcion = $1, fecha_objetivo = $2, start_date = $3 WHERE id = $4 
-                     RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content,
+                     RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content, is_archived,
                                start_date::text as start_date, fecha_objetivo::text as fecha_objetivo`,
                     [descripcion, fecha_objetivo, start_date, id]
                 );
             } else {
                 result = await pool.query(
                     `UPDATE tasks SET descripcion = $1, fecha_objetivo = $2 WHERE id = $3 
-                     RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content,
+                     RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content, is_archived,
                                start_date::text as start_date, fecha_objetivo::text as fecha_objetivo`,
                     [descripcion, fecha_objetivo, id]
                 );

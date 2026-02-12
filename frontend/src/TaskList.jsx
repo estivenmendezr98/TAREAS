@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import axios from 'axios';
 import PropTypes from 'prop-types';
-import { Check, Calendar, Trash2, Edit2, Save, X, ClipboardList, Paperclip } from 'lucide-react';
+import { Check, Calendar, Trash2, Edit2, Save, X, ClipboardList, Paperclip, Archive, RefreshCw } from 'lucide-react';
 import ReportModal from './ReportModal';
 import ConfirmationModal from './components/ConfirmationModal';
 import { useToast } from './context/ToastContext';
 import DatePicker from './components/DatePicker';
 
-const TaskList = ({ tasks, onTaskUpdated, selectionMode, selectedIds, onToggleSelect }) => {
+const TaskList = ({ tasks, onTaskUpdated, selectionMode, selectedIds, onToggleSelect, showArchived }) => {
     const [editingTaskId, setEditingTaskId] = useState(null);
     const [editDesc, setEditDesc] = useState('');
     const [editDate, setEditDate] = useState('');
@@ -27,6 +27,19 @@ const TaskList = ({ tasks, onTaskUpdated, selectionMode, selectedIds, onToggleSe
         } catch (error) {
             console.error('Error updating task:', error);
             addToast('Error al actualizar estado', 'error');
+        }
+    };
+
+    const handleArchiveToggle = async (task) => {
+        try {
+            await axios.put(`http://localhost:3000/api/tasks/${task.id}`, {
+                is_archived: !task.is_archived
+            });
+            onTaskUpdated();
+            addToast(task.is_archived ? 'Tarea restaurada' : 'Tarea archivada', 'success');
+        } catch (error) {
+            console.error('Error toggling archive task:', error);
+            addToast('Error al cambiar estado de archivo', 'error');
         }
     };
 
@@ -174,10 +187,20 @@ const TaskList = ({ tasks, onTaskUpdated, selectionMode, selectedIds, onToggleSe
                                                 )}
                                             </button>
 
-                                            <button onClick={() => startEdit(task)} className="action-btn edit-btn-sm">
+                                            <button onClick={() => startEdit(task)} className="action-btn edit-btn-sm" title="Editar">
                                                 <Edit2 size={14} />
                                             </button>
-                                            <button onClick={() => setTaskToDelete(task.id)} className="action-btn delete-btn-sm">
+
+                                            <button
+                                                onClick={() => handleArchiveToggle(task)}
+                                                className="action-btn archive-btn-sm"
+                                                title={task.is_archived ? "Desarchivar" : "Archivar"}
+                                                style={{ color: task.is_archived ? '#10b981' : '#f59e0b' }}
+                                            >
+                                                {task.is_archived ? <RefreshCw size={14} /> : <Archive size={14} />}
+                                            </button>
+
+                                            <button onClick={() => setTaskToDelete(task.id)} className="action-btn delete-btn-sm" title="Eliminar">
                                                 <Trash2 size={14} />
                                             </button>
                                         </div>
@@ -218,6 +241,7 @@ TaskList.propTypes = {
     selectionMode: PropTypes.bool,
     selectedIds: PropTypes.object,
     onToggleSelect: PropTypes.func,
+    showArchived: PropTypes.bool,
 };
 
 export default TaskList;

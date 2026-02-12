@@ -12,6 +12,7 @@ const ProjectItem = ({ project, onUpdate }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editTitle, setEditTitle] = useState(project.title);
     const [isSelectionMode, setIsSelectionMode] = useState(false);
+    const [showArchived, setShowArchived] = useState(false);
     const [selectedTaskIds, setSelectedTaskIds] = useState(new Set());
     const [actionToConfirm, setActionToConfirm] = useState(null); // { type: 'delete' | 'archive', data: ... }
     const { addToast } = useToast();
@@ -168,13 +169,24 @@ const ProjectItem = ({ project, onUpdate }) => {
             </div>
 
             <div className="project-body">
-                {!isSelectionMode && !project.is_archived && <TaskForm onTaskAdded={onUpdate} projectId={project.id} />}
+                {!isSelectionMode && !project.is_archived && !showArchived && <TaskForm onTaskAdded={onUpdate} projectId={project.id} />}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
+                    <button
+                        onClick={() => setShowArchived(!showArchived)}
+                        style={{ background: 'transparent', border: 'none', color: '#666', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px' }}
+                    >
+                        {showArchived ? 'Ver Tareas Activas' : 'Ver Tareas Archivadas'}
+                    </button>
+                </div>
+
                 <TaskList
-                    tasks={project.tasks || []}
+                    tasks={project.tasks ? project.tasks.filter(t => !!t.is_archived === showArchived) : []}
                     onTaskUpdated={onUpdate}
                     selectionMode={isSelectionMode}
                     selectedIds={selectedTaskIds}
                     onToggleSelect={handleSelectTask}
+                    showArchived={showArchived}
                 />
             </div>
 
