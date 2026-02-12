@@ -176,7 +176,7 @@ const ProjectItem = ({ project, onUpdate }) => {
                         onClick={() => setShowArchived(!showArchived)}
                         style={{ background: 'transparent', border: 'none', color: '#666', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px' }}
                     >
-                        {showArchived ? 'Ver Tareas Activas' : 'Ver Tareas Archivadas'}
+                        {showArchived ? 'Ver Tareas Activas' : `Ver Tareas Archivadas (${project.tasks ? project.tasks.filter(t => t.is_archived).length : 0})`}
                     </button>
                 </div>
 
