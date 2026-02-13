@@ -24,21 +24,25 @@ function AppContent() {
 
   const fetchProjects = useCallback(async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/projects');
+      const response = await axios.get('http://localhost:3000/api/projects', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setProjects(response.data);
     } catch (error) {
       console.error('Error fetching projects:', error);
     }
-  }, []);
+  }, [token]);
 
   const fetchDeleted = useCallback(async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/deleted');
+      const response = await axios.get('http://localhost:3000/api/deleted', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setDeletedData(response.data);
     } catch (error) {
       console.error('Error fetching deleted items:', error);
     }
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     if (isAuthenticated && token) {
