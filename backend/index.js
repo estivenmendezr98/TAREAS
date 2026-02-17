@@ -875,6 +875,29 @@ app.post('/api/categories', authenticateToken, async (req, res) => {
     }
 });
 
+// Update category
+app.put('/api/categories/:id', authenticateToken, async (req, res) => {
+    const { id } = req.params;
+    const { name, color } = req.body;
+
+    if (!name) return res.status(400).json({ error: 'Name is required' });
+
+    try {
+        const result = await pool.query(
+            'UPDATE project_categories SET name = $1, color = $2 WHERE id = $3 AND user_id = $4 RETURNING *',
+            [name, color || '#3b82f6', id, req.user.id]
+        );
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Category not found' });
+        res.json(result.rows[0]);
+    } catch (err) {
+        if (err.code === '23505') {
+            return res.status(409).json({ error: 'Category already exists' });
+        }
+        console.error('Error updating category:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Delete category
 app.delete('/api/categories/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;

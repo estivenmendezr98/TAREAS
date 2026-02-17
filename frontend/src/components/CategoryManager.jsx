@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import PropTypes from 'prop-types';
-import { X, Plus, Trash2, Tag } from 'lucide-react';
+import { X, Plus, Trash2, Tag, Edit2, Check } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -11,6 +11,11 @@ const CategoryManager = ({ isOpen, onClose, onUpdate }) => {
     const [newCatColor, setNewCatColor] = useState('#3b82f6');
     const { addToast } = useToast();
     const { token } = useAuth(); // Use Auth token properly
+
+    // Editing State
+    const [editingId, setEditingId] = useState(null);
+    const [editName, setEditName] = useState('');
+    const [editColor, setEditColor] = useState('');
 
     const colors = [
         '#ef4444', '#f97316', '#f59e0b', '#10b981',
@@ -58,6 +63,42 @@ const CategoryManager = ({ isOpen, onClose, onUpdate }) => {
                 addToast('Ya existe una etiqueta con ese nombre', 'warning');
             } else {
                 addToast('Error al crear etiqueta', 'error');
+            }
+        }
+    };
+
+    const startEditing = (cat) => {
+        setEditingId(cat.id);
+        setEditName(cat.name);
+        setEditColor(cat.color);
+    };
+
+    const cancelEditing = () => {
+        setEditingId(null);
+        setEditName('');
+        setEditColor('');
+    };
+
+    const saveEdit = async (id) => {
+        if (!editName.trim()) return;
+
+        try {
+            await axios.put(`http://localhost:3000/api/categories/${id}`, {
+                name: editName,
+                color: editColor
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setEditingId(null);
+            fetchCategories();
+            onUpdate();
+            addToast('Etiqueta actualizada', 'success');
+        } catch (error) {
+            console.error('Error updating category:', error);
+            if (error.response?.status === 409) {
+                addToast('Ya existe una etiqueta con ese nombre', 'warning');
+            } else {
+                addToast('Error al actualizar etiqueta', 'error');
             }
         }
     };
@@ -158,17 +199,51 @@ const CategoryManager = ({ isOpen, onClose, onUpdate }) => {
                             {categories.length === 0 && <p style={{ fontSize: '0.85rem', color: '#9ca3af', fontStyle: 'italic' }}>No hay etiquetas definidas.</p>}
                             {categories.map(cat => (
                                 <div key={cat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', background: '#f9fafb', borderRadius: '6px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: cat.color }} />
-                                        <span style={{ fontWeight: 500, color: '#374151' }}>{cat.name}</span>
-                                    </div>
-                                    <button
-                                        onClick={() => handleDelete(cat.id)}
-                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px', display: 'flex' }}
-                                        title="Eliminar"
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
+                                    {editingId === cat.id ? (
+                                        <div style={{ display: 'flex', gap: '0.5rem', flex: 1, alignItems: 'center' }}>
+                                            <input
+                                                type="text"
+                                                value={editName}
+                                                onChange={(e) => setEditName(e.target.value)}
+                                                className="task-input"
+                                                style={{ padding: '2px 5px', fontSize: '0.9rem', flex: 1 }}
+                                                autoFocus
+                                            />
+                                            <input
+                                                type="color"
+                                                value={editColor}
+                                                onChange={(e) => setEditColor(e.target.value)}
+                                                style={{ width: '24px', height: '24px', border: 'none', padding: 0, background: 'none', cursor: 'pointer' }}
+                                            />
+                                            <button onClick={() => saveEdit(cat.id)} className="action-btn save-btn" style={{ color: '#10b981' }}><Check size={16} /></button>
+                                            <button onClick={cancelEditing} className="action-btn cancel-btn" style={{ color: '#6b7280' }}><X size={16} /></button>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: cat.color }} />
+                                                <span style={{ fontWeight: 500, color: '#374151' }}>{cat.name}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '5px' }}>
+                                                <button
+                                                    onClick={() => startEditing(cat)}
+                                                    className="action-btn"
+                                                    style={{ color: '#3b82f6' }}
+                                                    title="Editar"
+                                                >
+                                                    <Edit2 size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(cat.id)}
+                                                    className="action-btn delete-btn"
+                                                    style={{ color: '#ef4444' }}
+                                                    title="Eliminar"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             ))}
                         </div>
