@@ -196,6 +196,23 @@ const initDB = async () => {
             );
         `);
 
+        // Create Project Categories Table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS project_categories (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                color TEXT DEFAULT '#3b82f6', -- Default blue
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(name, user_id)
+            );
+        `);
+
+        // Add category_id column to projects
+        await pool.query(`
+            ALTER TABLE projects ADD COLUMN IF NOT EXISTS category_id INTEGER REFERENCES project_categories(id) ON DELETE SET NULL;
+        `);
+
         console.log('Tablas projects, tasks y task_evidence verificadas/creadas exitosamente.');
     } catch (err) {
         console.error('Error al inicializar la base de datos:', err);
@@ -326,6 +343,26 @@ app.get('/api/projects', authenticateToken, async (req, res) => {
                 projectQuery += ' AND p.is_archived = FALSE';
             }
         }
+
+        // Include category info
+        projectQuery = `
+            SELECT p.id, p.title, p.user_id, p.created_at, p.is_archived, p.category_id,
+                   c.name as category_name, c.color as category_color
+            FROM projects p
+            LEFT JOIN project_categories c ON p.category_id = c.id
+            WHERE p.user_id = $1
+            AND p.deleted_at IS NULL
+        `;
+
+        if (statusParam !== undefined) {
+            const showArchived = statusParam === 'true';
+            if (showArchived) {
+                projectQuery += ' AND p.is_archived = TRUE';
+            } else {
+                projectQuery += ' AND p.is_archived = FALSE';
+            }
+        }
+
         projectQuery += ' ORDER BY p.created_at DESC';
 
         const projectsResult = await pool.query(projectQuery, [req.user.id]);
@@ -377,8 +414,8 @@ app.post('/api/projects', authenticateToken, async (req, res) => {
     const { title } = req.body;
     try {
         const result = await pool.query(
-            'INSERT INTO projects (title, user_id) VALUES ($1, $2) RETURNING *',
-            [title, req.user.id]
+            'INSERT INTO projects (title, user_id, category_id) VALUES ($1, $2, $3) RETURNING *',
+            [title, req.user.id, req.body.category_id || null]
         );
         res.json(result.rows[0]);
     } catch (err) {
@@ -519,10 +556,12 @@ app.delete('/api/evidence/:id', authenticateToken, async (req, res) => {
     }
 });
 
-// Update project
+
+
+// Update project (including category)
 app.put('/api/projects/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
-    const { title, is_archived } = req.body;
+    const { title, is_archived, category_id } = req.body;
 
     try {
         let result;
@@ -531,6 +570,20 @@ app.put('/api/projects/:id', authenticateToken, async (req, res) => {
                 'UPDATE projects SET is_archived = $1 WHERE id = $2 RETURNING *',
                 [is_archived, id]
             );
+        } else if (category_id !== undefined) {
+            // Handle category update specifically (or combined with title if needed, but usually separate)
+            // If category_id is null, it unsets it.
+            if (title) {
+                result = await pool.query(
+                    'UPDATE projects SET title = $1, category_id = $2 WHERE id = $3 RETURNING *',
+                    [title, category_id, id]
+                );
+            } else {
+                result = await pool.query(
+                    'UPDATE projects SET category_id = $1 WHERE id = $2 RETURNING *',
+                    [category_id, id]
+                );
+            }
         } else {
             result = await pool.query(
                 'UPDATE projects SET title = $1 WHERE id = $2 RETURNING *',
@@ -785,6 +838,56 @@ const cleanupOldItems = async () => {
 cleanupOldItems();
 // Run every 24 hours
 setInterval(cleanupOldItems, 24 * 60 * 60 * 1000);
+
+// --- Categories Routes ---
+
+// Get all categories for user
+app.get('/api/categories', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT * FROM project_categories WHERE user_id = $1 ORDER BY name ASC',
+            [req.user.id]
+        );
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching categories:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Create category
+app.post('/api/categories', authenticateToken, async (req, res) => {
+    const { name, color } = req.body;
+    if (!name) return res.status(400).json({ error: 'Name is required' });
+
+    try {
+        const result = await pool.query(
+            'INSERT INTO project_categories (name, color, user_id) VALUES ($1, $2, $3) RETURNING *',
+            [name, color || '#3b82f6', req.user.id]
+        );
+        res.json(result.rows[0]);
+    } catch (err) {
+        if (err.code === '23505') { // Unique constraint violation
+            return res.status(409).json({ error: 'Category already exists' });
+        }
+        console.error('Error creating category:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Delete category
+app.delete('/api/categories/:id', authenticateToken, async (req, res) => {
+    const { id } = req.params;
+    try {
+        // Since we used ON DELETE SET NULL in projects table, this is safe.
+        // Projects will just become uncategorized.
+        await pool.query('DELETE FROM project_categories WHERE id = $1 AND user_id = $2', [id, req.user.id]);
+        res.json({ message: 'Category deleted' });
+    } catch (err) {
+        console.error('Error deleting category:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
 
 // Start server
 app.listen(port, () => {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import PropTypes from 'prop-types';
 import { X, Save, Camera, FileText, Check, RotateCcw, Sparkles } from 'lucide-react';
@@ -95,13 +95,19 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
         addToast('Cambios descartados', 'info');
     };
 
-    const handleFileUpload = async (event) => {
-        const files = event.target.files;
+    const uploadFiles = async (files) => {
         if (!files || files.length === 0) return;
 
         const formData = new FormData();
-        for (let i = 0; i < files.length; i++) {
-            formData.append('files', files[i]);
+        const validFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+
+        if (validFiles.length === 0) {
+            addToast('Solo se permiten imágenes', 'warning');
+            return;
+        }
+
+        for (let i = 0; i < validFiles.length; i++) {
+            formData.append('files', validFiles[i]);
         }
 
         try {
@@ -115,6 +121,55 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
             addToast('Error subiendo las fotos', 'error');
         }
     };
+
+    const handleFileUpload = (event) => {
+        uploadFiles(event.target.files);
+    };
+
+    // Drag and Drop Logic
+    const [isDragging, setIsDragging] = useState(false);
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (e) => {
+        e.preventDefault();
+        setIsDragging(false);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        const files = e.dataTransfer.files;
+        uploadFiles(files);
+    };
+
+    // Paste Logic
+    const handlePaste = (e) => {
+        const items = e.clipboardData.items;
+        const files = [];
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.startsWith('image/')) {
+                files.push(items[i].getAsFile());
+            }
+        }
+        if (files.length > 0) {
+            e.preventDefault(); // Prevent default paste behavior if images are found
+            uploadFiles(files);
+        }
+    };
+
+    // Attach paste listener globally when modal is open
+    // We attach it to the window or document, but limit its effect to when this component is mounted
+
+    useEffect(() => {
+        window.addEventListener('paste', handlePaste);
+        return () => {
+            window.removeEventListener('paste', handlePaste);
+        };
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleDeleteEvidence = async () => {
         if (!evidenceToDelete) return;
@@ -346,7 +401,24 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
                             <h3>Evidencia Fotográfica</h3>
                         </div>
 
-                        <div className="evidence-controls-container">
+                        <div
+                            className={`evidence-controls-container ${isDragging ? 'dragging' : ''}`}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                            style={{
+                                border: isDragging ? '2px dashed #7c3aed' : '2px dashed #e5e7eb',
+                                backgroundColor: isDragging ? '#f5f3ff' : 'transparent',
+                                transition: 'all 0.2s ease',
+                                padding: '2rem',
+                                borderRadius: '12px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center', // Center content
+                                justifyContent: 'center',
+                                gap: '1rem'
+                            }}
+                        >
                             <label htmlFor="modal-file-upload" className="upload-btn">
                                 <Camera size={20} />
                                 Agregar Fotos
@@ -359,9 +431,10 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
                                     style={{ display: 'none' }}
                                 />
                             </label>
-                            <p className="evidence-help-text">
-                                Haz clic en una foto para verla en grande.<br />
-                                Usa el botón rojo para eliminar.
+                            <p className="evidence-help-text" style={{ textAlign: 'center', color: '#6b7280' }}>
+                                Arrastra y suelta imágenes aquí<br />
+                                O pega desde el portapapeles (CTRL + V)<br />
+                                Haz clic en una foto para verla en grande.
                             </p>
                         </div>
 

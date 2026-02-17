@@ -8,9 +8,10 @@ import { generateDocx } from './exportUtils';
 import ConfirmationModal from './components/ConfirmationModal';
 import { useToast } from './context/ToastContext';
 
-const ProjectItem = ({ project, onUpdate }) => {
+const ProjectItem = ({ project, categories, onUpdate }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editTitle, setEditTitle] = useState(project.title);
+    const [editCategoryId, setEditCategoryId] = useState(project.category_id || ''); // New state for category edit
     const [isSelectionMode, setIsSelectionMode] = useState(false);
     const [showArchived, setShowArchived] = useState(false);
     const [selectedTaskIds, setSelectedTaskIds] = useState(new Set());
@@ -34,7 +35,8 @@ const ProjectItem = ({ project, onUpdate }) => {
         if (!editTitle.trim()) return;
         try {
             await axios.put(`http://localhost:3000/api/projects/${project.id}`, {
-                title: editTitle
+                title: editTitle,
+                category_id: editCategoryId || null // Send category update
             });
             setIsEditing(false);
             onUpdate();
@@ -106,7 +108,7 @@ const ProjectItem = ({ project, onUpdate }) => {
         <div className={`project-card ${project.is_archived ? 'archived' : ''}`} id={`project-${project.id}`}>
             <div className={`project-header ${isSelectionMode ? 'selection-mode' : ''}`}>
                 {isEditing ? (
-                    <div className="edit-container">
+                    <div className="edit-container" style={{ alignItems: 'center' }}>
                         <input
                             type="text"
                             value={editTitle}
@@ -114,6 +116,27 @@ const ProjectItem = ({ project, onUpdate }) => {
                             className="edit-input"
                             autoFocus
                         />
+                        {categories && categories.length > 0 && (
+                            <select
+                                value={editCategoryId}
+                                onChange={(e) => setEditCategoryId(e.target.value)}
+                                style={{
+                                    padding: '0.4rem',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '4px',
+                                    backgroundColor: 'white',
+                                    color: '#374151',
+                                    fontSize: '0.9rem',
+                                    cursor: 'pointer',
+                                    maxWidth: '150px'
+                                }}
+                            >
+                                <option value="">Sin Etiqueta</option>
+                                {categories.map(cat => (
+                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                ))}
+                            </select>
+                        )}
                         <button onClick={handleUpdate} className="action-btn save-btn"><Save size={18} /></button>
                         <button onClick={() => setIsEditing(false)} className="action-btn cancel-btn"><X size={18} /></button>
                     </div>
@@ -209,6 +232,7 @@ const ProjectItem = ({ project, onUpdate }) => {
 
 ProjectItem.propTypes = {
     project: PropTypes.object.isRequired,
+    categories: PropTypes.array, // Optional, but recommended
     onUpdate: PropTypes.func.isRequired,
 };
 

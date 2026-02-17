@@ -10,12 +10,18 @@ import UsersView from './components/UsersView';
 import { ToastProvider, useToast } from './context/ToastContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './components/Login';
+import CategoryManager from './components/CategoryManager';
+import { Tag, ChevronDown, ChevronRight } from 'lucide-react';
 import './index.css';
 
 function AppContent() {
   const { isAuthenticated, logout: authLogout, user, token } = useAuth();
   const [projects, setProjects] = useState([]);
+  const [categories, setCategories] = useState([]); // New state for categories
+  const [expandedCategories, setExpandedCategories] = useState({}); // Track expanded/collapsed state
   const [newProjectTitle, setNewProjectTitle] = useState('');
+  const [newProjectCategory, setNewProjectCategory] = useState(''); // New state for selected category
+  const [showCategoryManager, setShowCategoryManager] = useState(false); // Modal state
   const [viewMode, setViewMode] = useState('active'); // 'active', 'archived', 'calendar', 'deleted', 'gantt'
   const [deletedData, setDeletedData] = useState({ projects: [], tasks: [] });
   const [confirmModalState, setConfirmModalState] = useState({ isOpen: false, type: null, id: null });
@@ -44,11 +50,30 @@ function AppContent() {
     }
   }, [token]);
 
+  const fetchCategories = useCallback(async () => {
+    try {
+      const response = await axios.get('http://localhost:3000/api/categories', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCategories(response.data);
+      // Initialize all categories as expanded by default
+      const initialExpanded = {};
+      response.data.forEach(c => initialExpanded[c.id] = true);
+      // Also init "uncategorized" key
+      initialExpanded['uncategorized'] = true;
+      setExpandedCategories(prev => ({ ...initialExpanded, ...prev }));
+
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  }, [token]);
+
   useEffect(() => {
     if (isAuthenticated && token) {
       fetchProjects();
+      fetchCategories();
     }
-  }, [fetchProjects, isAuthenticated, token]);
+  }, [fetchProjects, fetchCategories, isAuthenticated, token]);
 
   useEffect(() => {
     if (viewMode === 'deleted' && user) {
@@ -66,8 +91,14 @@ function AppContent() {
     if (!newProjectTitle.trim()) return;
 
     try {
-      await axios.post('http://localhost:3000/api/projects', { title: newProjectTitle });
+      await axios.post('http://localhost:3000/api/projects', {
+        title: newProjectTitle,
+        category_id: newProjectCategory || null
+      }, {
+        headers: { Authorization: `Bearer ${token}` } // Ensure headers are passed if not using global interceptor
+      });
       setNewProjectTitle('');
+      setNewProjectCategory('');
       setViewMode('active');
       fetchProjects();
       addToast('Proyecto creado exitosamente', 'success');
@@ -178,6 +209,13 @@ function AppContent() {
     }
   };
 
+  const toggleCategory = (catId) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [catId]: !prev[catId]
+    }));
+  };
+
   const displayedProjects = projects.filter(p => {
     if (viewMode === 'archived') return p.is_archived;
     if (viewMode === 'active') return !p.is_archived;
@@ -204,22 +242,49 @@ function AppContent() {
         </div>
       </header>
 
-      {viewMode === 'active' && (
-        <section className="create-project-section">
-          <form onSubmit={handleCreateProject} className="project-form">
-            <input
-              type="text"
-              className="project-input"
-              placeholder="Nuevo Título de Proyecto..."
-              value={newProjectTitle}
-              onChange={(e) => setNewProjectTitle(e.target.value)}
-            />
-            <button type="submit" className="project-button">
-              <Plus size={20} /> Crear
-            </button>
-          </form>
-        </section>
-      )}
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+        <button
+          onClick={() => setShowCategoryManager(true)}
+          className="action-btn"
+          style={{ background: '#eff6ff', color: '#3b82f6', padding: '0.4rem 0.8rem', borderRadius: '6px', fontSize: '0.9rem', fontWeight: 500 }}
+        >
+          <Tag size={16} style={{ marginRight: '5px' }} /> Administrar Etiquetas
+        </button>
+      </div>
+
+
+      {
+        viewMode === 'active' && (
+          <section className="create-project-section">
+            <form onSubmit={handleCreateProject} className="project-form">
+              <input
+                type="text"
+                className="project-input"
+                placeholder="Nuevo Título de Proyecto..."
+                value={newProjectTitle}
+                onChange={(e) => setNewProjectTitle(e.target.value)}
+              />
+
+              <select
+                value={newProjectCategory}
+                onChange={(e) => setNewProjectCategory(e.target.value)}
+                style={{
+                  border: 'none', background: 'transparent', color: '#6b7280', fontSize: '0.9rem', padding: '0 1rem', cursor: 'pointer', outline: 'none', maxWidth: '150px'
+                }}
+              >
+                <option value="">Sin Etiqueta</option>
+                {categories.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+
+              <button type="submit" className="project-button">
+                <Plus size={20} /> Crear
+              </button>
+            </form>
+          </section>
+        )
+      }
 
       <div className="view-toggle-container">
         <button
@@ -273,16 +338,104 @@ function AppContent() {
       <div className="content-area" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {viewMode === 'active' && (
           <div className="projects-list">
-            {displayedProjects.map(project => (
-              <ProjectItem
-                key={project.id}
-                project={project}
-                onUpdate={fetchProjects}
-              />
-            ))}
-            {displayedProjects.length === 0 && (
-              <p className="no-projects">No hay proyectos activos.</p>
-            )}
+            {/* Group Projects by Category */}
+            {(() => {
+              // Grouping Logic
+              const grouped = {};
+              const uncategorized = [];
+
+              displayedProjects.forEach(p => {
+                if (p.category_id) {
+                  if (!grouped[p.category_id]) grouped[p.category_id] = [];
+                  grouped[p.category_id].push(p);
+                } else {
+                  uncategorized.push(p);
+                }
+              });
+
+              return (
+                <>
+                  {/* Render Categorized Groups */}
+                  {categories.map(cat => {
+                    const catProjects = grouped[cat.id];
+                    if (!catProjects || catProjects.length === 0) return null;
+
+                    return (
+                      <div key={cat.id} className="category-group" style={{ marginBottom: '2rem' }}>
+                        <div
+                          className="category-header"
+                          onClick={() => toggleCategory(cat.id)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem', paddingLeft: '0.5rem',
+                            cursor: 'pointer', userSelect: 'none'
+                          }}
+                        >
+                          <button style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex' }}>
+                            {expandedCategories[cat.id] ? <ChevronDown size={20} color="#6b7280" /> : <ChevronRight size={20} color="#6b7280" />}
+                          </button>
+                          <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: cat.color }}></span>
+                          <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#374151', margin: 0 }}>{cat.name}</h2>
+                          <span style={{ fontSize: '0.85rem', color: '#9ca3af', fontWeight: 500 }}>{catProjects.length}</span>
+                        </div>
+
+                        {expandedCategories[cat.id] && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', paddingLeft: '1rem', borderLeft: `2px solid ${cat.color}20` }}>
+                            {catProjects.map(project => (
+                              <ProjectItem
+                                key={project.id}
+                                project={project}
+                                categories={categories}
+                                onUpdate={fetchProjects}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Render Uncategorized */}
+                  {uncategorized.length > 0 && (
+                    <div className="category-group">
+                      {categories.length > 0 && ( // Only show header if there are other categories to distinguish from
+                        <div
+                          className="category-header"
+                          onClick={() => toggleCategory('uncategorized')}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem', paddingLeft: '0.5rem',
+                            cursor: 'pointer', userSelect: 'none'
+                          }}
+                        >
+                          <button style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex' }}>
+                            {expandedCategories['uncategorized'] ? <ChevronDown size={20} color="#6b7280" /> : <ChevronRight size={20} color="#6b7280" />}
+                          </button>
+                          <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#e5e7eb' }}></span>
+                          <h2 style={{ fontSize: '1.2rem', fontWeight: 600, color: '#6b7280', margin: 0 }}>Sin Etiqueta</h2>
+                          <span style={{ fontSize: '0.85rem', color: '#9ca3af', fontWeight: 500 }}>{uncategorized.length}</span>
+                        </div>
+                      )}
+
+                      {(categories.length === 0 || expandedCategories['uncategorized']) && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', paddingLeft: categories.length > 0 ? '1rem' : 0, borderLeft: categories.length > 0 ? '2px solid #e5e7eb' : 'none' }}>
+                          {uncategorized.map(project => (
+                            <ProjectItem
+                              key={project.id}
+                              project={project}
+                              categories={categories}
+                              onUpdate={fetchProjects}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {displayedProjects.length === 0 && (
+                    <p className="no-projects">No hay proyectos activos.</p>
+                  )}
+                </>
+              );
+            })()}
           </div>
         )}
 
@@ -302,6 +455,7 @@ function AppContent() {
               <ProjectItem
                 key={project.id}
                 project={project}
+                categories={categories}
                 onUpdate={fetchProjects}
               />
             ))}
@@ -336,7 +490,16 @@ function AppContent() {
         confirmText="Eliminar"
         isDestructive={true}
       />
-    </div>
+
+      <CategoryManager
+        isOpen={showCategoryManager}
+        onClose={() => setShowCategoryManager(false)}
+        onUpdate={() => {
+          fetchCategories();
+          fetchProjects();
+        }}
+      />
+    </div >
   );
 }
 
