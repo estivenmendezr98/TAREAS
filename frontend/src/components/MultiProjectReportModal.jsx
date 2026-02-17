@@ -80,8 +80,10 @@ const MultiProjectReportModal = ({ isOpen, onClose, projects }) => {
 
         const sections = [];
 
-        // Sort projects by ID or Name logic here if needed
-        const sortedProjects = [...projects].filter(p => selectedProjectIds.has(p.id));
+        // Sort projects by Title
+        const sortedProjects = [...projects]
+            .filter(p => selectedProjectIds.has(p.id))
+            .sort((a, b) => a.title.localeCompare(b.title));
 
         for (const project of sortedProjects) {
             const projectTasks = project.tasks

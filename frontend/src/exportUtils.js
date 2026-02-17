@@ -107,15 +107,38 @@ export const generateDocx = async (reportTitle, sections) => {
 
                 for (const ev of task.evidence) {
                     try {
-                        const response = await fetch(`http://localhost:3000/${ev.file_path}`);
+                        // Normalize path to use forward slashes and ensure no double slashes
+                        const normalizedPath = ev.file_path.replace(/\\/g, '/');
+                        const imageUrl = `http://localhost:3000/${normalizedPath}`;
+
+                        const response = await fetch(imageUrl);
+                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
                         const blob = await response.blob();
                         const arrayBuffer = await blob.arrayBuffer();
 
-                        const imageBitmap = await createImageBitmap(blob);
-                        const originalWidth = imageBitmap.width;
-                        const originalHeight = imageBitmap.height;
+                        // Robust way to get image dimensions
+                        const getImageDimensions = (blob) => {
+                            return new Promise((resolve, reject) => {
+                                const img = new Image();
+                                const url = URL.createObjectURL(blob);
+                                img.onload = () => {
+                                    resolve({ width: img.naturalWidth, height: img.naturalHeight });
+                                    URL.revokeObjectURL(url);
+                                };
+                                img.onerror = (err) => {
+                                    URL.revokeObjectURL(url);
+                                    reject(err);
+                                };
+                                img.src = url;
+                            });
+                        };
 
-                        const MAX_WIDTH = 500; // slightly smaller to be safe
+                        const dimensions = await getImageDimensions(blob);
+                        const originalWidth = dimensions.width;
+                        const originalHeight = dimensions.height;
+
+                        const MAX_WIDTH = 500;
                         let targetWidth = originalWidth;
                         let targetHeight = originalHeight;
 
@@ -123,7 +146,7 @@ export const generateDocx = async (reportTitle, sections) => {
                         if (originalWidth > MAX_WIDTH) {
                             const ratio = MAX_WIDTH / originalWidth;
                             targetWidth = MAX_WIDTH;
-                            targetHeight = originalHeight * ratio;
+                            targetHeight = Math.round(originalHeight * ratio);
                         }
 
                         children.push(
@@ -135,7 +158,7 @@ export const generateDocx = async (reportTitle, sections) => {
                                             width: targetWidth,
                                             height: targetHeight,
                                         },
-                                        type: "png",
+                                        type: "png", // docx usually detects type from signature, but explicit fallback helps
                                     }),
                                 ],
                                 alignment: AlignmentType.CENTER,
@@ -147,7 +170,7 @@ export const generateDocx = async (reportTitle, sections) => {
                         console.error("Error loading image for docx:", error);
                         children.push(
                             new Paragraph({
-                                text: "[Error al cargar imagen]",
+                                text: `[Error al cargar imagen: ${ev.file_path}]`,
                                 color: "FF0000",
                             })
                         );
