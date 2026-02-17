@@ -11,7 +11,8 @@ import { ToastProvider, useToast } from './context/ToastContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './components/Login';
 import CategoryManager from './components/CategoryManager';
-import { Tag, ChevronDown, ChevronRight } from 'lucide-react';
+import MultiProjectReportModal from './components/MultiProjectReportModal';
+import { Tag, ChevronDown, ChevronRight, FileText } from 'lucide-react';
 import './index.css';
 
 function AppContent() {
@@ -21,7 +22,9 @@ function AppContent() {
   const [expandedCategories, setExpandedCategories] = useState({}); // Track expanded/collapsed state
   const [newProjectTitle, setNewProjectTitle] = useState('');
   const [newProjectCategory, setNewProjectCategory] = useState(''); // New state for selected category
+
   const [showCategoryManager, setShowCategoryManager] = useState(false); // Modal state
+  const [showReportModal, setShowReportModal] = useState(false); // Multi-project report modal
   const [viewMode, setViewMode] = useState('active'); // 'active', 'archived', 'calendar', 'deleted', 'gantt'
   const [deletedData, setDeletedData] = useState({ projects: [], tasks: [] });
   const [confirmModalState, setConfirmModalState] = useState({ isOpen: false, type: null, id: null });
@@ -242,13 +245,20 @@ function AppContent() {
         </div>
       </header>
 
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', gap: '1rem' }}>
         <button
           onClick={() => setShowCategoryManager(true)}
           className="action-btn"
           style={{ background: '#eff6ff', color: '#3b82f6', padding: '0.4rem 0.8rem', borderRadius: '6px', fontSize: '0.9rem', fontWeight: 500 }}
         >
           <Tag size={16} style={{ marginRight: '5px' }} /> Administrar Etiquetas
+        </button>
+        <button
+          onClick={() => setShowReportModal(true)}
+          className="action-btn"
+          style={{ background: '#f0fdf4', color: '#10b981', padding: '0.4rem 0.8rem', borderRadius: '6px', fontSize: '0.9rem', fontWeight: 500 }}
+        >
+          <FileText size={16} style={{ marginRight: '5px' }} /> Generar Informe Global
         </button>
       </div>
 
@@ -498,6 +508,12 @@ function AppContent() {
           fetchCategories();
           fetchProjects();
         }}
+      />
+
+      <MultiProjectReportModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        projects={projects}
       />
     </div >
   );

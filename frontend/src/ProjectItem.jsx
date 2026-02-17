@@ -79,7 +79,13 @@ const ProjectItem = ({ project, categories, onUpdate }) => {
 
         const tasksToExport = project.tasks.filter(t => selectedTaskIds.has(t.id));
         try {
-            await generateDocx(project.title, tasksToExport);
+            await generateDocx(
+                `Informe de Proyecto: ${project.title}`,
+                [{
+                    projectTitle: project.title,
+                    tasks: tasksToExport
+                }]
+            );
             setIsSelectionMode(false);
             setSelectedTaskIds(new Set());
             addToast('Documento generado exitosamente', 'success');
