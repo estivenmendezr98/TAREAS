@@ -39,6 +39,37 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
 
     const [showAiMenu, setShowAiMenu] = useState(false);
 
+    // Helper: converts markdown to HTML (bold, bullets, line breaks)
+    const renderMarkdown = (text) => {
+        if (!text) return '';
+        const lines = text.split('\n');
+        const result = [];
+        let inList = false;
+
+        lines.forEach((rawLine) => {
+            const line = rawLine.trim();
+
+            // Bullet list item: * or -
+            if (/^[\*\-]\s+/.test(line)) {
+                if (!inList) { result.push('<ul style="margin:0.25rem 0 0.25rem 1.5rem;padding:0">'); inList = true; }
+                const content = line.replace(/^[\*\-]\s+/, '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                result.push(`<li>${content}</li>`);
+            } else {
+                if (inList) { result.push('</ul>'); inList = false; }
+                if (line === '') {
+                    result.push('<br/>');
+                } else {
+                    const formatted = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                    result.push(`<span>${formatted}</span><br/>`);
+                }
+            }
+        });
+
+        if (inList) result.push('</ul>');
+        return result.join('');
+    };
+
+
     const handleAiAction = (mode) => {
         setShowAiMenu(false);
         handleAiImprove(mode);
@@ -218,22 +249,44 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
                                                 </span>
                                             )}
                                         </div>
+                                        {/* Rendered preview with bold support */}
+                                        <div
+                                            dangerouslySetInnerHTML={{ __html: renderMarkdown(improvedText) }}
+                                            style={{
+                                                width: '100%',
+                                                minHeight: '150px',
+                                                padding: '1.5rem',
+                                                border: '2px solid #a7f3d0',
+                                                borderRadius: '12px',
+                                                fontFamily: 'inherit',
+                                                fontSize: '1rem',
+                                                lineHeight: '1.7',
+                                                color: '#111827',
+                                                background: '#ffffff',
+                                                marginTop: '0.5rem',
+                                                boxSizing: 'border-box',
+                                                overflowY: 'auto',
+                                                maxHeight: '300px'
+                                            }}
+                                        />
+                                        {/* Editable raw text below */}
                                         <textarea
                                             value={improvedText}
                                             onChange={(e) => setImprovedText(e.target.value)}
                                             style={{
                                                 width: '100%',
-                                                minHeight: '300px',
-                                                padding: '1.5rem',
-                                                border: '2px solid #a7f3d0',
-                                                borderRadius: '12px',
-                                                fontFamily: 'inherit',
-                                                fontSize: '1.2rem',
-                                                lineHeight: '1.6',
-                                                color: '#111827',
-                                                background: '#ffffff',
+                                                minHeight: '80px',
+                                                padding: '0.75rem',
+                                                border: '1px dashed #a7f3d0',
+                                                borderRadius: '8px',
+                                                fontFamily: 'monospace',
+                                                fontSize: '0.85rem',
+                                                lineHeight: '1.5',
+                                                color: '#6b7280',
+                                                background: '#f9fffe',
                                                 resize: 'vertical',
-                                                marginTop: '0.5rem'
+                                                marginTop: '0.5rem',
+                                                boxSizing: 'border-box'
                                             }}
                                         />
                                     </div>
@@ -286,11 +339,41 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
                             </div>
                         ) : (
                             <>
+                                {/* Rendered preview: shows bold text from **markdown** */}
+                                {reportContent && reportContent.includes('**') ? (
+                                    <div
+                                        dangerouslySetInnerHTML={{ __html: renderMarkdown(reportContent) }}
+                                        style={{
+                                            width: '100%',
+                                            minHeight: '120px',
+                                            padding: '0.75rem',
+                                            border: '1px solid #e5e7eb',
+                                            borderRadius: '8px',
+                                            fontFamily: 'inherit',
+                                            fontSize: '1rem',
+                                            lineHeight: '1.7',
+                                            color: '#111827',
+                                            background: '#fafafa',
+                                            boxSizing: 'border-box',
+                                            overflowY: 'auto',
+                                            maxHeight: '200px',
+                                            marginBottom: '0.5rem',
+                                        }}
+                                    />
+                                ) : null}
                                 <textarea
                                     className="report-textarea"
                                     placeholder="Escribe las observaciones detalladas aquí..."
                                     value={reportContent}
                                     onChange={(e) => setReportContent(e.target.value)}
+                                    style={reportContent && reportContent.includes('**') ? {
+                                        fontSize: '0.82rem',
+                                        fontFamily: 'monospace',
+                                        color: '#6b7280',
+                                        minHeight: '80px',
+                                        background: '#f9fafb',
+                                        borderStyle: 'dashed',
+                                    } : {}}
                                 />
                                 <div className="report-actions">
                                     <div className="ai-menu-container" style={{ position: 'relative', display: 'inline-block' }}>

@@ -634,13 +634,13 @@ app.post('/api/ai/improve', authenticateToken, async (req, res) => {
         // Construct Prompt based on Mode
         if (mode === 'fix_grammar') {
             prompt = `
-            Actúa como un corrector de estilo y ortografía experto.
-            Tu ÚNICA tarea es CORREGIR la ortografía, gramática y puntuación del siguiente texto.
+            Actúa como un corrector de estilo y ortografía experto bajo normas APA.
+            Tu tarea es CORREGIR la ortografía, gramática, puntuación y estilo del siguiente texto.
             
             REGLAS ESTRICTAS:
-            1. NO cambies el significado del texto.
-            2. NO agregues saludos, despedidas, ni explicaciones extra.
-            3. NO uses Markdown, negritas (**), ni ningún formato especial. Solo texto plano.
+            1. Mantén la redacción en tercera persona y tono formal/objetivo (Normas APA).
+            2. NO cambies el significado del texto.
+            3. Puedes usar **negritas** para resaltar conceptos clave si mejora la claridad.
             4. Solo devuelve el texto corregido final.
     
             Texto original:
@@ -648,33 +648,41 @@ app.post('/api/ai/improve', authenticateToken, async (req, res) => {
             `;
         } else if (mode === 'restructure') {
             prompt = `
-            Actúa como un experto en redacción de informes técnicos.
+            Actúa como un experto en redacción de informes técnicos bajo normas APA.
             Tu tarea es REESTRUCTURAR y ORGANIZAR el siguiente texto para que sea claro, profesional y fácil de leer.
             
             REGLAS:
-            1. Usa párrafos claros.
-            2. Si hay listas de ideas, usa viñetas (guiones -).
-            3. Mantén un tono profesional y objetivo.
-            4. Corrige la ortografía y gramática mientras reestructuras.
-            5. NO agregues información inventada.
-            6. NO uses Markdown (negritas, cursivas), solo texto plano y saltos de línea.
+            1. Usa **negritas** para los títulos y subtítulos de las secciones.
+            2. Organiza el contenido en párrafos claros y concisos.
+            3. Si hay listas de ideas, usa viñetas.
+            4. Mantén un tono profesional, objetivo y en tercera persona (Normas APA).
+            5. Corrige la ortografía y gramática.
+            6. Separa los párrafos con saltos de línea claros.
             
             Texto desordenado:
             "${text}"
             `;
         } else if (mode === 'analyze_images') {
             prompt = `
-            Actúa como un perito experto analizando evidencia visual.
-            Analiza las imágenes proporcionadas y genera una descripción detallada y técnica de lo que observas.
+            Actúa como un perito experto analizando evidencia visual para informes técnicos.
+            Analiza las imágenes proporcionadas y genera una descripción detallada, técnica y estructurada.
             
-            Contexto adicional del usuario (si existe): "${text || 'Sin contexto'}"
+            Contexto adicional: "${text || 'Sin contexto específico'}"
+            
+            ESTRUCTURA REQUERIDA:
+            **Descripción General:**
+            [Descripción global de lo que se observa]
+
+            **Detalles Técnicos:**
+            [Detalles específicos sobre estado, materiales, daños o condiciones observadas]
+
+            **Observaciones:**
+            [Conclusiones o notas relevantes basadas en la evidencia visual]
             
             REGLAS:
-            1. Sé objetivo y descriptivo.
-            2. Menciona detalles relevantes (estado, daños, ubicación, objetos clave).
-            3. Usa un lenguaje formal y técnico.
-            4. Organiza la respuesta en un párrafo cohesivo.
-            5. NO uses Markdown.
+            1. Sé objetivo y técnico.
+            2. Usa **negritas** para los encabezados.
+            3. Redacta en tercera persona.
             `;
 
             // Process Images
@@ -696,23 +704,26 @@ app.post('/api/ai/improve', authenticateToken, async (req, res) => {
             });
         } else if (mode === 'generate_report') {
             prompt = `
-            Actúa como un redactor técnico experto en informes de mantenimiento y obras.
-            Tu tarea es ESCRIBIR un informe detallado y profesional basado en las siguientes instrucciones del usuario.
+            Actúa como un redactor técnico experto en informes de mantenimiento y obras bajo normas APA.
+            Tu tarea es ESCRIBIR un informe detallado y profesional basado en las siguientes instrucciones.
 
-            Instrucciones del usuario:
+            Instrucciones:
             "${text}"
 
             REGLAS:
-            1. Usa un lenguaje formal, técnico y objetivo.
-            2. Estructura el informe con párrafos claros.
-            3. Si la instrucción implica una lista de tareas, usa viñetas.
-            4. NO inventes hechos no mencionados o implícitos en la instrucción, pero puedes expandir con redacción profesional estándar para dar contexto.
-            5. NO uses Markdown (negritas, cursivas), solo texto plano y saltos de línea.
-            6. Comienza directamente con el informe, SIN saludos ni introducciones como "Aquí tienes el informe".
+            1. **Estilo APA:** Redacción en tercera persona, tono formal y objetivo.
+            2. **Estructura:**
+               - Usa **negritas** para Títulos y Subtítulos.
+               - Organiza el texto en párrafos claros.
+               - Usa viñetas para listas.
+            3. **Contenido:**
+               - Comienza con un título descriptivo en **Negrita**.
+               - Desarrolla el cuerpo del informe con claridad técnica.
+            4. Solo devuelve el contenido del informe.
             `;
         } else {
             // Default to grammar fix if no mode specified
-            prompt = `Corregir ortografía y gramática: "${text}"`;
+            prompt = `Corregir ortografía y gramática manteniendo formato APA: "${text}"`;
         }
 
         let result;
