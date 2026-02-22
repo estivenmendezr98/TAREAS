@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import PropTypes from 'prop-types';
-import { Check, Calendar, Trash2, Edit2, Save, X, ClipboardList, Paperclip, Archive, RefreshCw } from 'lucide-react';
+import { Check, Calendar, Trash2, Edit2, Save, X, ClipboardList, Paperclip, Archive, RefreshCw, FileText } from 'lucide-react';
 import ReportModal from './ReportModal';
 import ConfirmationModal from './components/ConfirmationModal';
 import { useToast } from './context/ToastContext';
@@ -180,8 +180,13 @@ const TaskList = ({ tasks, onTaskUpdated, selectionMode, selectedIds, onToggleSe
                                                 title="Abrir Informe y Evidencias"
                                             >
                                                 <ClipboardList size={16} />
+                                                {task.report_content && task.report_content.trim().length > 0 && (
+                                                    <span className="evidence-badge text-badge" title="Tiene texto en Observaciones/Informe">
+                                                        <FileText size={10} />
+                                                    </span>
+                                                )}
                                                 {task.evidence && task.evidence.length > 0 && (
-                                                    <span className="evidence-badge" title={`${task.evidence.length} fotos`}>
+                                                    <span className="evidence-badge" title={`${task.evidence.length} foto(s)`}>
                                                         <Paperclip size={10} />
                                                     </span>
                                                 )}

@@ -468,6 +468,10 @@ body {
   color: var(--primary-color);
 }
 
+.evidence-badge.text-badge {
+  color: #10b981;
+}
+
 /* ---------------- MODAL STYLES ---------------- */
 .modal-overlay {
   position: fixed;
