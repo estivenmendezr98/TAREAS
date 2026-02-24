@@ -55,8 +55,12 @@ app.use(cors());
 
 app.use(express.json({ limit: '500mb' }));
 
-// Serve uploaded files statically
-app.use('/uploads', express.static('uploads'));
+// Serve uploaded files statically — with explicit CORS so clipboard API can fetch them
+app.use('/uploads', (req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
+}, express.static('uploads'));
 
 // Database connection pool
 const pool = new Pool({

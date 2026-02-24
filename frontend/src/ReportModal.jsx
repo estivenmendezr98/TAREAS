@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import PropTypes from 'prop-types';
 import { X, Save, Camera, FileText, Check, RotateCcw, Sparkles } from 'lucide-react';
@@ -62,6 +62,84 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
             console.error('Error saving image order:', error);
         }
     };
+
+    // --- Image selection (for Ctrl+C copy) ---
+    const [selectedImages, setSelectedImages] = useState(new Set());
+
+    const toggleSelectImage = useCallback((e, evId) => {
+        e.stopPropagation(); // don't open fullscreen
+        setSelectedImages(prev => {
+            const next = new Set(prev);
+            next.has(evId) ? next.delete(evId) : next.add(evId);
+            return next;
+        });
+    }, []);
+
+    // Ctrl+C → copy selected images to clipboard as PNG
+    useEffect(() => {
+        const handleKeyDown = async (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedImages.size > 0) {
+                e.preventDefault();
+                const toCopy = orderedEvidence.filter(ev => selectedImages.has(ev.id));
+
+                // The Clipboard API only supports ONE ClipboardItem at a time.
+                // To copy multiple images, we composite them into a single canvas
+                // (stacked vertically with a small gap) and write one PNG blob.
+                const combinedPngBlob = new Promise((resolve, reject) => {
+                    let loaded = 0;
+                    const imgs = toCopy.map(() => new Image());
+                    const GAP = toCopy.length > 1 ? 16 : 0; // px gap between images
+
+                    const onAllLoaded = () => {
+                        const maxW = Math.max(...imgs.map(i => i.naturalWidth));
+                        const totalH = imgs.reduce((sum, i) => sum + i.naturalHeight, 0) + GAP * (imgs.length - 1);
+                        const canvas = document.createElement('canvas');
+                        canvas.width = maxW;
+                        canvas.height = totalH;
+                        const ctx = canvas.getContext('2d');
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(0, 0, maxW, totalH);
+                        let y = 0;
+                        imgs.forEach(img => {
+                            // Center each image horizontally
+                            const x = Math.floor((maxW - img.naturalWidth) / 2);
+                            ctx.drawImage(img, x, y);
+                            y += img.naturalHeight + GAP;
+                        });
+                        canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('toBlob failed')), 'image/png');
+                    };
+
+                    imgs.forEach((img, i) => {
+                        img.crossOrigin = 'anonymous';
+                        img.onload = () => { if (++loaded === imgs.length) onAllLoaded(); };
+                        img.onerror = () => reject(new Error(`No se pudo cargar imagen ${i + 1}`));
+                        img.src = `http://localhost:3000/${toCopy[i].file_path}`;
+                    });
+                });
+
+                try {
+                    await navigator.clipboard.write([
+                        new ClipboardItem({ 'image/png': combinedPngBlob })
+                    ]);
+                    addToast(
+                        toCopy.length === 1
+                            ? 'Imagen copiada al portapapeles'
+                            : `${toCopy.length} imágenes copiadas al portapapeles (combinadas)`,
+                        'success'
+                    );
+                } catch (err) {
+                    console.error('Clipboard error:', err.name, err.message);
+                    addToast(`Error al copiar: ${err.message}`, 'error');
+                }
+            }
+            // Escape clears selection
+            if (e.key === 'Escape') {
+                setSelectedImages(new Set());
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [selectedImages, orderedEvidence, addToast]);
 
     const [showAiMenu, setShowAiMenu] = useState(false);
 
@@ -619,10 +697,12 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
                                             opacity: dragIndex === index ? 0.4 : 1,
                                             cursor: 'grab',
                                             position: 'relative',
-                                            transition: 'opacity 0.15s'
+                                            transition: 'opacity 0.15s',
+                                            outline: selectedImages.has(ev.id) ? '3px solid #3b82f6' : 'none',
+                                            borderRadius: '10px'
                                         }}
                                     >
-                                        {/* Order number badge */}
+                                        {/* Order number badge — top left */}
                                         <div style={{
                                             position: 'absolute', top: 5, left: 5, zIndex: 10,
                                             background: '#3b82f6', color: 'white',
@@ -633,6 +713,27 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
                                             pointerEvents: 'none', userSelect: 'none'
                                         }}>
                                             {index + 1}
+                                        </div>
+
+                                        {/* Selection checkbox — top right */}
+                                        <div
+                                            onClick={(e) => toggleSelectImage(e, ev.id)}
+                                            title="Seleccionar para copiar (Ctrl+C)"
+                                            style={{
+                                                position: 'absolute', top: 5, right: 5, zIndex: 10,
+                                                width: 20, height: 20, borderRadius: '4px',
+                                                background: selectedImages.has(ev.id) ? '#3b82f6' : 'rgba(255,255,255,0.92)',
+                                                border: selectedImages.has(ev.id) ? '2px solid #3b82f6' : '2px solid #d1d5db',
+                                                cursor: 'pointer',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
+                                            }}
+                                        >
+                                            {selectedImages.has(ev.id) && (
+                                                <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                                                    <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                </svg>
+                                            )}
                                         </div>
 
                                         <div className="modal-thumbnail" onClick={() => setSelectedEvidence(ev)}>
@@ -651,6 +752,27 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
                                 <p className="no-evidence">No hay fotos adjuntas a este informe.</p>
                             )}
                         </div>
+
+                        {/* Selection hint bar */}
+                        {selectedImages.size > 0 && (
+                            <div style={{
+                                display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px',
+                                padding: '8px 12px', background: '#eff6ff', border: '1px solid #bfdbfe',
+                                borderRadius: '8px', fontSize: '0.85rem', color: '#1d4ed8'
+                            }}>
+                                <span style={{ fontWeight: 600 }}>
+                                    {selectedImages.size} imagen{selectedImages.size > 1 ? 'es' : ''} seleccionada{selectedImages.size > 1 ? 's' : ''}
+                                </span>
+                                <span>—</span>
+                                <kbd style={{ background: '#dbeafe', padding: '2px 7px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.8rem', border: '1px solid #93c5fd' }}>Ctrl+C</kbd>
+                                <span>para copiar al portapapeles</span>
+                                <button
+                                    onClick={() => setSelectedImages(new Set())}
+                                    style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '0.8rem', padding: '2px 6px' }}
+                                    title="Limpiar selección (Escape)"
+                                >✕ Limpiar</button>
+                            </div>
+                        )}
                     </div>
                 </div>
 
