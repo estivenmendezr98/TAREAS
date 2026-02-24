@@ -1,104 +1,128 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { X, FileText, CheckSquare, Square, ChevronDown, ChevronRight, Download, CheckCircle, Image as ImageIcon } from 'lucide-react';
+import { X, FileText, Square, ChevronDown, ChevronRight, Download, CheckCircle } from 'lucide-react';
 import { generateDocx } from '../exportUtils';
 import { useToast } from '../context/ToastContext';
 
 const MultiProjectReportModal = ({ isOpen, onClose, projects }) => {
+    // Ordered array of { taskId, projectId } — order = selection order
+    const [taskSelectionOrder, setTaskSelectionOrder] = useState([]);
+    const [selectedTaskIds, setSelectedTaskIds] = useState(new Set());   // fast lookup
     const [selectedProjectIds, setSelectedProjectIds] = useState(new Set());
-    const [selectedTaskIds, setSelectedTaskIds] = useState(new Set());
     const [expandedProjects, setExpandedProjects] = useState(new Set());
     const [reportTitle, setReportTitle] = useState('Informe Global de Proyectos');
     const { addToast } = useToast();
 
-    // Reset selection when modal opens
+    // Reset when modal opens
     useEffect(() => {
         if (isOpen) {
-            setSelectedProjectIds(new Set());
+            setTaskSelectionOrder([]);
             setSelectedTaskIds(new Set());
+            setSelectedProjectIds(new Set());
             setExpandedProjects(new Set());
             setReportTitle('Informe Global de Proyectos');
         }
     }, [isOpen]);
 
-    const handleToggleProject = (projectId) => {
-        const newSelectedProjects = new Set(selectedProjectIds);
-        const newSelectedTasks = new Set(selectedTaskIds);
-        const project = projects.find(p => p.id === projectId);
+    /* ── toggle a single task ── */
+    const handleToggleTask = (taskId, projectId) => {
+        setTaskSelectionOrder(prev => {
+            const exists = prev.some(o => o.taskId === taskId);
+            return exists
+                ? prev.filter(o => o.taskId !== taskId)   // deselect → removes from order
+                : [...prev, { taskId, projectId }];        // select → appended at end
+        });
 
-        if (newSelectedProjects.has(projectId)) {
-            newSelectedProjects.delete(projectId);
-            // Deselect all tasks of this project
-            project.tasks.forEach(t => newSelectedTasks.delete(t.id));
-        } else {
-            newSelectedProjects.add(projectId);
-            // Select all active tasks of this project
-            project.tasks.filter(t => !t.deleted_at).forEach(t => newSelectedTasks.add(t.id));
-        }
-        setSelectedProjectIds(newSelectedProjects);
-        setSelectedTaskIds(newSelectedTasks);
+        setSelectedTaskIds(prev => {
+            const next = new Set(prev);
+            next.has(taskId) ? next.delete(taskId) : next.add(taskId);
+            return next;
+        });
+
+        // Keep project selection state in sync
+        setSelectedProjectIds(prev => {
+            const project = projects.find(p => p.id === projectId);
+            const projectTaskIds = new Set(project.tasks.filter(t => !t.deleted_at).map(t => t.id));
+            // After this toggle, check how many project tasks will be selected
+            const afterToggle = selectedTaskIds.has(taskId)
+                ? new Set([...selectedTaskIds].filter(id => id !== taskId))
+                : new Set([...selectedTaskIds, taskId]);
+            const anySelected = [...projectTaskIds].some(id => afterToggle.has(id));
+            const next = new Set(prev);
+            anySelected ? next.add(projectId) : next.delete(projectId);
+            return next;
+        });
     };
 
-    const handleToggleTask = (taskId, projectId) => {
-        const newSelectedTasks = new Set(selectedTaskIds);
-        if (newSelectedTasks.has(taskId)) {
-            newSelectedTasks.delete(taskId);
-        } else {
-            newSelectedTasks.add(taskId);
-        }
-        setSelectedTaskIds(newSelectedTasks);
-
-        // Update Project Selection State based on tasks
+    /* ── toggle full project (select/deselect all its tasks) ── */
+    const handleToggleProject = (projectId) => {
         const project = projects.find(p => p.id === projectId);
-        const projectTaskIds = project.tasks.filter(t => !t.deleted_at).map(t => t.id);
-        const hasSelectedTasks = projectTaskIds.some(id => newSelectedTasks.has(id));
+        const activeTasks = project.tasks.filter(t => !t.deleted_at);
+        const isSelected = selectedProjectIds.has(projectId);
 
-        const newSelectedProjects = new Set(selectedProjectIds);
-        if (hasSelectedTasks) {
-            newSelectedProjects.add(projectId);
+        if (isSelected) {
+            // Deselect all project tasks
+            const projectTaskIds = new Set(activeTasks.map(t => t.id));
+            setTaskSelectionOrder(prev => prev.filter(o => !projectTaskIds.has(o.taskId)));
+            setSelectedTaskIds(prev => {
+                const next = new Set(prev);
+                projectTaskIds.forEach(id => next.delete(id));
+                return next;
+            });
+            setSelectedProjectIds(prev => {
+                const next = new Set(prev);
+                next.delete(projectId);
+                return next;
+            });
         } else {
-            newSelectedProjects.delete(projectId);
+            // Select all project tasks (append only those not already selected)
+            const toAdd = activeTasks.filter(t => !selectedTaskIds.has(t.id));
+            setTaskSelectionOrder(prev => [...prev, ...toAdd.map(t => ({ taskId: t.id, projectId }))]);
+            setSelectedTaskIds(prev => {
+                const next = new Set(prev);
+                activeTasks.forEach(t => next.add(t.id));
+                return next;
+            });
+            setSelectedProjectIds(prev => new Set([...prev, projectId]));
         }
-        setSelectedProjectIds(newSelectedProjects);
     };
 
     const toggleExpand = (projectId) => {
-        const newExpanded = new Set(expandedProjects);
-        if (newExpanded.has(projectId)) {
-            newExpanded.delete(projectId);
-        } else {
-            newExpanded.add(projectId);
-        }
-        setExpandedProjects(newExpanded);
+        setExpandedProjects(prev => {
+            const next = new Set(prev);
+            next.has(projectId) ? next.delete(projectId) : next.add(projectId);
+            return next;
+        });
     };
 
+    /* ── generate report in SELECTION ORDER ── */
     const handleGenerate = async () => {
-        if (selectedProjectIds.size === 0) {
-            addToast('Selecciona al menos un proyecto', 'warning');
+        if (taskSelectionOrder.length === 0) {
+            addToast('Selecciona al menos una tarea', 'warning');
             return;
         }
 
-        const sections = [];
+        // Build sections grouped by project but in the order tasks were selected.
+        // First appearance of a project determines project order.
+        const projectOrder = [];
+        const projectTasksMap = {};
 
-        // Sort projects by Title
-        const sortedProjects = [...projects]
-            .filter(p => selectedProjectIds.has(p.id))
-            .sort((a, b) => a.title.localeCompare(b.title));
+        for (const { taskId, projectId } of taskSelectionOrder) {
+            const project = projects.find(p => p.id === projectId);
+            const task = project?.tasks.find(t => t.id === taskId);
+            if (!task || task.deleted_at) continue;
 
-        for (const project of sortedProjects) {
-            const projectTasks = project.tasks
-                .filter(t => !t.deleted_at && selectedTaskIds.has(t.id));
-
-            if (projectTasks.length > 0) {
-                sections.push({
-                    projectTitle: project.title,
-                    tasks: projectTasks
-                });
+            if (!projectTasksMap[projectId]) {
+                projectTasksMap[projectId] = { projectTitle: project.title, tasks: [] };
+                projectOrder.push(projectId);
             }
+            projectTasksMap[projectId].tasks.push(task);
         }
 
+        const sections = projectOrder.map(pid => projectTasksMap[pid]);
+
         if (sections.length === 0) {
-            addToast('No hay tareas seleccionadas para generar el informe', 'warning');
+            addToast('No hay tareas seleccionadas válidas', 'warning');
             return;
         }
 
@@ -112,11 +136,10 @@ const MultiProjectReportModal = ({ isOpen, onClose, projects }) => {
         }
     };
 
-    // Calculate stats
-    const totalSelectedTasks = selectedTaskIds.size;
-    const totalSelectedProjects = selectedProjectIds.size;
-
     if (!isOpen) return null;
+
+    const totalSelectedTasks = taskSelectionOrder.length;
+    const totalSelectedProjects = selectedProjectIds.size;
 
     return (
         <div className="modal-overlay" onClick={onClose} style={{ zIndex: 1100 }}>
@@ -128,15 +151,15 @@ const MultiProjectReportModal = ({ isOpen, onClose, projects }) => {
                         <FileText size={24} color="#3b82f6" />
                         <div>
                             <h2 style={{ fontSize: '1.25rem', marginBottom: '4px' }}>Generar Informe Global</h2>
-                            <p style={{ fontSize: '0.9rem', color: '#6b7280', margin: 0 }}>Selecciona los proyectos y tareas que deseas incluir.</p>
+                            <p style={{ fontSize: '0.9rem', color: '#6b7280', margin: 0 }}>
+                                Selecciona las tareas — el informe respetará el orden de selección.
+                            </p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="modal-close-btn">
-                        <X size={24} />
-                    </button>
+                    <button onClick={onClose} className="modal-close-btn"><X size={24} /></button>
                 </div>
 
-                {/* Body - Scrollable */}
+                {/* Body */}
                 <div className="modal-body" style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
 
                     <div style={{ marginBottom: '1.5rem' }}>
@@ -150,71 +173,79 @@ const MultiProjectReportModal = ({ isOpen, onClose, projects }) => {
                         />
                     </div>
 
-                    <div className="projects-selection-list" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         {projects.filter(p => !p.is_archived).map(project => {
                             const activeTasks = project.tasks.filter(t => !t.deleted_at);
                             if (activeTasks.length === 0) return null;
 
                             const isExpanded = expandedProjects.has(project.id);
                             const isProjectSelected = selectedProjectIds.has(project.id);
-                            // Check partial selection logic if needed, but strict project selection is fine for now
 
                             return (
                                 <div key={project.id} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
-                                    {/* Project Header */}
+
+                                    {/* Project header */}
                                     <div
-                                        style={{
-                                            display: 'flex', alignItems: 'center', padding: '10px 15px', background: '#f9fafb',
-                                            cursor: 'pointer', borderBottom: isExpanded ? '1px solid #e5e7eb' : 'none'
-                                        }}
+                                        style={{ display: 'flex', alignItems: 'center', padding: '10px 15px', background: '#f9fafb', cursor: 'pointer', borderBottom: isExpanded ? '1px solid #e5e7eb' : 'none' }}
                                         onClick={() => toggleExpand(project.id)}
                                     >
-                                        <div
-                                            onClick={(e) => { e.stopPropagation(); handleToggleProject(project.id); }}
-                                            style={{ marginRight: '10px', cursor: 'pointer', display: 'flex' }}
-                                        >
-                                            {isProjectSelected ? <CheckSquare size={20} color="#3b82f6" /> : <Square size={20} color="#9ca3af" />}
+                                        <div onClick={e => { e.stopPropagation(); handleToggleProject(project.id); }} style={{ marginRight: '10px', cursor: 'pointer' }}>
+                                            {isProjectSelected
+                                                ? <div style={{ width: 20, height: 20, borderRadius: '4px', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                                                </div>
+                                                : <Square size={20} color="#9ca3af" />
+                                            }
                                         </div>
-
                                         <span style={{ flex: 1, fontWeight: 600, color: '#374151' }}>{project.title}</span>
                                         <span style={{ fontSize: '0.85rem', color: '#6b7280', marginRight: '10px' }}>{activeTasks.length} tareas</span>
-
                                         {isExpanded ? <ChevronDown size={18} color="#9ca3af" /> : <ChevronRight size={18} color="#9ca3af" />}
                                     </div>
 
-                                    {/* Tasks List */}
+                                    {/* Task list */}
                                     {isExpanded && (
                                         <div style={{ padding: '0.5rem 0', background: 'white' }}>
                                             {activeTasks.map(task => {
-                                                const isTaskSelected = selectedTaskIds.has(task.id);
+                                                const orderIndex = taskSelectionOrder.findIndex(o => o.taskId === task.id);
+                                                const isSelected = orderIndex !== -1;
+                                                const orderNum = orderIndex + 1;
+
                                                 return (
                                                     <div
                                                         key={task.id}
                                                         onClick={() => handleToggleTask(task.id, project.id)}
-                                                        style={{
-                                                            display: 'flex', alignItems: 'flex-start', padding: '8px 15px 8px 45px',
-                                                            cursor: 'pointer', hover: { background: '#f3f4f6' }
-                                                        }}
                                                         className="task-selection-item"
+                                                        style={{ display: 'flex', alignItems: 'flex-start', padding: '8px 15px 8px 45px', cursor: 'pointer' }}
                                                     >
+                                                        {/* Order badge or empty square */}
                                                         <div style={{ marginTop: '2px', marginRight: '10px', flexShrink: 0 }}>
-                                                            {isTaskSelected ? <CheckSquare size={16} color="#3b82f6" /> : <Square size={16} color="#d1d5db" />}
+                                                            {isSelected ? (
+                                                                <div style={{
+                                                                    width: 20, height: 20, borderRadius: '50%',
+                                                                    background: '#3b82f6', color: 'white',
+                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                    fontSize: '0.7rem', fontWeight: 700
+                                                                }}>
+                                                                    {orderNum}
+                                                                </div>
+                                                            ) : (
+                                                                <Square size={16} color="#d1d5db" />
+                                                            )}
                                                         </div>
-                                                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                            <span style={{ fontSize: '0.95rem', color: isTaskSelected ? '#1f2937' : '#6b7280' }}>
+
+                                                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                                            <span style={{ fontSize: '0.95rem', color: isSelected ? '#1f2937' : '#6b7280', fontWeight: isSelected ? 500 : 400 }}>
                                                                 {task.descripcion}
                                                             </span>
 
-                                                            {/* Badges */}
                                                             <div style={{ display: 'flex', gap: '4px' }}>
                                                                 {task.completada && (
-                                                                    <span title="Tarea Completada" style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderRadius: '4px', background: '#d1fae5', color: '#059669', fontSize: '0.75rem', fontWeight: 500 }}>
+                                                                    <span style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderRadius: '4px', background: '#d1fae5', color: '#059669', fontSize: '0.75rem', fontWeight: 500 }}>
                                                                         <CheckCircle size={12} style={{ marginRight: '4px' }} /> Resuelta
                                                                     </span>
                                                                 )}
-
                                                                 {(task.report_content || (task.evidence && task.evidence.length > 0)) && (
-                                                                    <span title="Tiene Informe/Evidencia" style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderRadius: '4px', background: '#e0f2fe', color: '#0284c7', fontSize: '0.75rem', fontWeight: 500 }}>
+                                                                    <span style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderRadius: '4px', background: '#e0f2fe', color: '#0284c7', fontSize: '0.75rem', fontWeight: 500 }}>
                                                                         <FileText size={12} style={{ marginRight: '4px' }} /> Informe
                                                                     </span>
                                                                 )}
@@ -232,9 +263,12 @@ const MultiProjectReportModal = ({ isOpen, onClose, projects }) => {
                 </div>
 
                 {/* Footer */}
-                <div className="modal-footer" style={{ padding: '1.5rem', borderTop: '1px solid #e5e7eb', background: '#f9fafb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #e5e7eb', background: '#f9fafb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ fontSize: '0.9rem', color: '#6b7280' }}>
                         <strong>{totalSelectedProjects}</strong> proyectos, <strong>{totalSelectedTasks}</strong> tareas seleccionadas
+                        {totalSelectedTasks > 0 && (
+                            <span style={{ marginLeft: '8px', color: '#9ca3af', fontSize: '0.8rem' }}>— en el orden indicado</span>
+                        )}
                     </div>
                     <button
                         onClick={handleGenerate}

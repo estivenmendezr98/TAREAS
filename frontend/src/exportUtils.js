@@ -149,20 +149,8 @@ export const generateDocx = async (reportTitle, sections) => {
                 })
             );
 
-            // Status & Date
-            const statusText = task.completada ? "COMPLETADA" : "PENDIENTE";
-            const dateText = task.fecha_objetivo ? ` | Fecha Objetivo: ${new Date(task.fecha_objetivo).toLocaleDateString()}` : "";
 
-            children.push(
-                new Paragraph({
-                    children: [
-                        new TextRun({ text: "Estado: ", bold: true, font: "Times New Roman", size: APA_BODY_SIZE }),
-                        new TextRun({ text: `${statusText}${dateText}`, italics: true, font: "Times New Roman", size: APA_BODY_SIZE }),
-                    ],
-                    indent: { firstLine: APA_FIRST_LINE_INDENT },
-                    spacing: { after: 0, line: APA_DOUBLE_SPACE },
-                })
-            );
+
 
             // Report Content - APA Level 3 heading + body text
             if (task.report_content) {
