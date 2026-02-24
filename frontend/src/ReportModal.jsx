@@ -42,23 +42,32 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
     // Helper: converts markdown to HTML (bold, bullets, line breaks)
     const renderMarkdown = (text) => {
         if (!text) return '';
-        const lines = text.split('\n');
+        // Normalize: collapse 3+ consecutive newlines to max 2, trim
+        const normalized = text.replace(/\n{3,}/g, '\n\n').trim();
+        const lines = normalized.split('\n');
         const result = [];
         let inList = false;
+        let consecutiveBlanks = 0;
 
         lines.forEach((rawLine) => {
             const line = rawLine.trim();
 
             // Bullet list item: * or -
             if (/^[\*\-]\s+/.test(line)) {
-                if (!inList) { result.push('<ul style="margin:0.25rem 0 0.25rem 1.5rem;padding:0">'); inList = true; }
+                consecutiveBlanks = 0;
+                if (!inList) { result.push('<ul style="margin:0.4rem 0 0.4rem 1.5rem;padding:0">'); inList = true; }
                 const content = line.replace(/^[\*\-]\s+/, '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
                 result.push(`<li>${content}</li>`);
             } else {
                 if (inList) { result.push('</ul>'); inList = false; }
                 if (line === '') {
-                    result.push('<br/>');
+                    consecutiveBlanks++;
+                    // Only emit ONE paragraph gap, no matter how many blank lines
+                    if (consecutiveBlanks === 1) {
+                        result.push('<div style="margin:0.4rem 0"></div>');
+                    }
                 } else {
+                    consecutiveBlanks = 0;
                     const formatted = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
                     result.push(`<span>${formatted}</span><br/>`);
                 }
@@ -89,9 +98,17 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
         setIsImproving(true);
         try {
             const payload = {
-                text: mode === 'generate_report' ? promptText : reportContent,
+                text: mode === 'generate_report'
+                    ? promptText
+                    : mode === 'analyze_images'
+                        // Pass task title + existing report text as rich context for image analysis
+                        ? `Tarea: "${task.descripcion}"${reportContent && reportContent.trim() ? `\n\nObservaciones previas: "${reportContent.trim()}"` : ''}`
+                        : reportContent,
                 mode: mode,
-                images: mode === 'analyze_images' ? task.evidence.map(e => e.file_path) : []
+                // For both analyze_images and generate_report, send all task images
+                images: (mode === 'analyze_images' || mode === 'generate_report')
+                    ? (task.evidence ? task.evidence.map(e => e.file_path) : [])
+                    : []
             };
 
             const response = await axios.post('http://localhost:3000/api/ai/improve', payload);
@@ -451,14 +468,44 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
                             background: 'rgba(0,0,0,0.5)', zIndex: 1100,
                             display: 'flex', alignItems: 'center', justifyContent: 'center'
                         }}>
-                            <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '500px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
-                                <h3 style={{ marginTop: 0, color: '#1f2937' }}>Generar Informe con IA</h3>
-                                <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '1rem' }}>Describe detalladamente sobre qué quieres que trate el informe.</p>
+                            <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '520px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+                                <h3 style={{ marginTop: 0, color: '#1f2937', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Sparkles size={20} color="#7c3aed" /> Generar Informe con IA
+                                </h3>
+                                <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                                    Describe qué quieres que incluya el informe. La IA usará tu prompt junto con la evidencia fotográfica.
+                                </p>
+
+                                {/* Image badge */}
+                                {task.evidence && task.evidence.length > 0 ? (
+                                    <div style={{
+                                        display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                        background: '#f5f3ff', border: '1px solid #ddd6fe',
+                                        borderRadius: '8px', padding: '0.6rem 1rem',
+                                        marginBottom: '1rem', fontSize: '0.875rem', color: '#6d28d9'
+                                    }}>
+                                        <Camera size={16} color="#7c3aed" />
+                                        <span>
+                                            <strong>{task.evidence.length}</strong> {task.evidence.length === 1 ? 'imagen será' : 'imágenes serán'} incluidas en el análisis
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <div style={{
+                                        display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                        background: '#f9fafb', border: '1px solid #e5e7eb',
+                                        borderRadius: '8px', padding: '0.6rem 1rem',
+                                        marginBottom: '1rem', fontSize: '0.875rem', color: '#6b7280'
+                                    }}>
+                                        <Camera size={16} color="#9ca3af" />
+                                        <span>Sin imágenes adjuntas — el informe se generará solo con tu prompt</span>
+                                    </div>
+                                )}
+
                                 <textarea
                                     value={promptText}
                                     onChange={(e) => setPromptText(e.target.value)}
-                                    placeholder="Ej: Escribe un informe sobre la limpieza del sitio, la organización de las herramientas y el retiro de escombros..."
-                                    style={{ width: '100%', minHeight: '120px', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db', marginBottom: '1.5rem', fontFamily: 'inherit', resize: 'vertical' }}
+                                    placeholder="Ej: Genera un informe paso a paso sobre la instalación eléctrica realizada, incluyendo los materiales utilizados y el estado final del área..."
+                                    style={{ width: '100%', minHeight: '130px', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db', marginBottom: '1.5rem', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
                                 />
                                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
                                     <button onClick={() => setShowPromptInput(false)} style={{ padding: '0.6rem 1.2rem', border: '1px solid #e5e7eb', background: 'white', borderRadius: '8px', cursor: 'pointer', fontWeight: '500', color: '#374151' }}>Cancelar</button>
@@ -468,9 +515,9 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
                                             setShowPromptInput(false);
                                         }}
                                         disabled={!promptText.trim()}
-                                        style={{ padding: '0.6rem 1.2rem', border: 'none', background: '#7c3aed', color: 'white', borderRadius: '8px', cursor: 'pointer', fontWeight: '500', opacity: !promptText.trim() ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                        style={{ padding: '0.6rem 1.2rem', border: 'none', background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)', color: 'white', borderRadius: '8px', cursor: 'pointer', fontWeight: '500', opacity: !promptText.trim() ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 4px 6px -1px rgba(124,58,237,0.4)' }}
                                     >
-                                        <Sparkles size={16} /> Generar
+                                        <Sparkles size={16} /> {task.evidence && task.evidence.length > 0 ? 'Generar con Imágenes' : 'Generar'}
                                     </button>
                                 </div>
                             </div>

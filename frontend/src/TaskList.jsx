@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import PropTypes from 'prop-types';
-import { Check, Calendar, Trash2, Edit2, Save, X, ClipboardList, Paperclip, Archive, RefreshCw, FileText } from 'lucide-react';
+import { Check, Calendar, Clock, Trash2, Edit2, Save, X, ClipboardList, Paperclip, Archive, RefreshCw, FileText } from 'lucide-react';
 import ReportModal from './ReportModal';
 import ConfirmationModal from './components/ConfirmationModal';
 import { useToast } from './context/ToastContext';
@@ -101,6 +101,22 @@ const TaskList = ({ tasks, onTaskUpdated, selectionMode, selectedIds, onToggleSe
         return cleanDate;
     };
 
+    // Format ISO timestamp → 23/febrero/2026 11:05 PM
+    const formatDateTime = (isoString) => {
+        if (!isoString) return null;
+        const d = new Date(isoString);
+        if (isNaN(d.getTime())) return null;
+        const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+        const dd = d.getDate();
+        const mes = months[d.getMonth()];
+        const yyyy = d.getFullYear();
+        const raw = d.getHours();
+        const ampm = raw >= 12 ? 'PM' : 'AM';
+        const hh = raw % 12 || 12;
+        const min = String(d.getMinutes()).padStart(2, '0');
+        return `${dd}/${mes}/${yyyy} ${hh}:${min} ${ampm}`;
+    };
+
     if (tasks.length === 0) {
         return <div className="empty-state">No hay tareas pendientes.</div>;
     }
@@ -161,13 +177,28 @@ const TaskList = ({ tasks, onTaskUpdated, selectionMode, selectedIds, onToggleSe
 
                                         <div className="task-content">
                                             <span className="task-text">{task.descripcion}</span>
-                                            <div className="task-meta">
+                                            <div className="task-meta" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.2rem' }}>
                                                 {(task.start_date || task.fecha_objetivo) && (
                                                     <span className="task-date">
                                                         <Calendar size={14} />
                                                         {task.start_date ? formatDate(task.start_date) : ''}
                                                         {task.start_date && task.fecha_objetivo ? ' - ' : ''}
                                                         {task.fecha_objetivo ? formatDate(task.fecha_objetivo) : ''}
+                                                    </span>
+                                                )}
+                                                {task.updated_at && (
+                                                    <span style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px',
+                                                        fontSize: '0.72rem',
+                                                        color: '#b0b8c8',
+                                                        borderLeft: '2px solid #e5e7eb',
+                                                        paddingLeft: '6px',
+                                                        marginTop: '1px'
+                                                    }} title="Última modificación">
+                                                        <Clock size={11} />
+                                                        Modificado: {formatDateTime(task.updated_at)}
                                                     </span>
                                                 )}
                                             </div>

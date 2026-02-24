@@ -185,6 +185,11 @@ const initDB = async () => {
             ALTER TABLE tasks ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP DEFAULT NULL;
         `);
 
+        // Add updated_at column to tasks (Migration for last-modified tracking)
+        await pool.query(`
+            ALTER TABLE tasks ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+        `);
+
         // Create deleted_items table (for tracking deleted projects and tasks)
         await pool.query(`
             CREATE TABLE IF NOT EXISTS deleted_items (
@@ -373,7 +378,8 @@ app.get('/api/projects', authenticateToken, async (req, res) => {
             SELECT 
                 t.id, t.project_id, t.descripcion, t.completada, t.fecha_creacion, t.report_content, t.is_archived,
                 TO_CHAR(t.start_date, 'YYYY-MM-DD') as start_date,
-                TO_CHAR(t.fecha_objetivo, 'YYYY-MM-DD') as fecha_objetivo
+                TO_CHAR(t.fecha_objetivo, 'YYYY-MM-DD') as fecha_objetivo,
+                t.updated_at
             FROM tasks t
             JOIN projects p ON t.project_id = p.id
             WHERE p.user_id = $1
@@ -455,39 +461,38 @@ app.put('/api/tasks/:id', authenticateToken, async (req, res) => {
         let result;
         if (completada !== undefined) {
             result = await pool.query(
-                `UPDATE tasks SET completada = $1 WHERE id = $2 
-                 RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content, is_archived,
+                `UPDATE tasks SET completada = $1, updated_at = NOW() WHERE id = $2
+                 RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content, is_archived, updated_at,
                            start_date::text as start_date, fecha_objetivo::text as fecha_objetivo`,
                 [completada, id]
             );
         } else if (is_archived !== undefined) {
             result = await pool.query(
-                `UPDATE tasks SET is_archived = $1 WHERE id = $2 
-                 RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content, is_archived,
+                `UPDATE tasks SET is_archived = $1, updated_at = NOW() WHERE id = $2
+                 RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content, is_archived, updated_at,
                            start_date::text as start_date, fecha_objetivo::text as fecha_objetivo`,
                 [is_archived, id]
             );
         } else if (report_content !== undefined) {
             result = await pool.query(
-                `UPDATE tasks SET report_content = $1 WHERE id = $2 
-                 RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content, is_archived,
+                `UPDATE tasks SET report_content = $1, updated_at = NOW() WHERE id = $2
+                 RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content, is_archived, updated_at,
                            start_date::text as start_date, fecha_objetivo::text as fecha_objetivo`,
                 [report_content, id]
             );
         } else {
-            // Check if start_date is provided (it might be distinct from other updates)
             if (req.body.start_date !== undefined) {
                 const { start_date } = req.body;
                 result = await pool.query(
-                    `UPDATE tasks SET descripcion = $1, fecha_objetivo = $2, start_date = $3 WHERE id = $4 
-                     RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content, is_archived,
+                    `UPDATE tasks SET descripcion = $1, fecha_objetivo = $2, start_date = $3, updated_at = NOW() WHERE id = $4
+                     RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content, is_archived, updated_at,
                                start_date::text as start_date, fecha_objetivo::text as fecha_objetivo`,
                     [descripcion, fecha_objetivo, start_date, id]
                 );
             } else {
                 result = await pool.query(
-                    `UPDATE tasks SET descripcion = $1, fecha_objetivo = $2 WHERE id = $3 
-                     RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content, is_archived,
+                    `UPDATE tasks SET descripcion = $1, fecha_objetivo = $2, updated_at = NOW() WHERE id = $3
+                     RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content, is_archived, updated_at,
                                start_date::text as start_date, fecha_objetivo::text as fecha_objetivo`,
                     [descripcion, fecha_objetivo, id]
                 );
@@ -626,104 +631,144 @@ app.post('/api/ai/improve', authenticateToken, async (req, res) => {
 
     try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const generationConfig = (mode === 'analyze_images' || (mode === 'generate_report' && images && images.length > 0))
+            ? { temperature: 0.4, maxOutputTokens: 8192 }  // Lower temp for image analysis = more precise descriptions
+            : { temperature: 0.85, maxOutputTokens: 4096 }; // Higher temp = more natural, human-like writing
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", generationConfig });
 
         let prompt = "";
         let imageParts = [];
 
         // Construct Prompt based on Mode
         if (mode === 'fix_grammar') {
-            prompt = `
-            Actúa como un corrector de estilo y ortografía experto bajo normas APA.
-            Tu tarea es CORREGIR la ortografía, gramática, puntuación y estilo del siguiente texto.
-            
-            REGLAS ESTRICTAS:
-            1. Mantén la redacción en tercera persona y tono formal/objetivo (Normas APA).
-            2. NO cambies el significado del texto.
-            3. Puedes usar **negritas** para resaltar conceptos clave si mejora la claridad.
-            4. Solo devuelve el texto corregido final.
-    
-            Texto original:
-            "${text}"
-            `;
+            prompt = `Eres un corrector de texto. Tu tarea es corregir la ortografía, gramática y puntuación del siguiente texto.
+
+REGLAS IMPORTANTES:
+- Corrige solo los errores de escritura (ortografía, tildes, puntuación, concordancia).
+- NO cambies el estilo, las palabras elegidas, ni el tono del autor. El resultado debe sonar EXACTAMENTE como el autor lo escribiría, solo sin errores.
+- NO añadas frases, secciones ni información nueva.
+- Mantén exactamente la misma estructura, párrafos y extensión del texto original.
+- NO añadas líneas en blanco extra entre párrafos. Usa un salto de línea simple entre oraciones del mismo párrafo.
+- Devuelve ÚNICAMENTE el texto corregido, sin comentarios ni explicaciones.
+
+Texto a corregir:
+"${text}"`;
+
         } else if (mode === 'restructure') {
-            prompt = `
-            Actúa como un experto en redacción de informes técnicos bajo normas APA.
-            Tu tarea es REESTRUCTURAR y ORGANIZAR el siguiente texto para que sea claro, profesional y fácil de leer.
-            
-            REGLAS:
-            1. Usa **negritas** para los títulos y subtítulos de las secciones.
-            2. Organiza el contenido en párrafos claros y concisos.
-            3. Si hay listas de ideas, usa viñetas.
-            4. Mantén un tono profesional, objetivo y en tercera persona (Normas APA).
-            5. Corrige la ortografía y gramática.
-            6. Separa los párrafos con saltos de línea claros.
-            
-            Texto desordenado:
-            "${text}"
-            `;
+            prompt = `Eres un asistente de redacción. Tu tarea es reorganizar y mejorar la claridad del siguiente texto, manteniendo el tono natural y directo del autor.
+
+REGLAS:
+- El resultado debe sonar como si el propio autor lo hubiera reescrito más ordenadamente.
+- Usa un lenguaje claro y directo, como hablaría una persona real haciendo su trabajo.
+- NO uses lenguaje académico ni frases rimbombantes.
+- Puedes usar **negritas** para destacar puntos clave o subtítulos si ayuda a la lectura.
+- Corrige errores de ortografía y gramática.
+- NO añadas líneas en blanco extra entre párrafos; separa secciones con un solo salto de línea.
+- Devuelve ÚNICAMENTE el texto reorganizado.
+
+Texto original:
+"${text}"`;
+
         } else if (mode === 'analyze_images') {
-            prompt = `
-            Actúa como un perito experto analizando evidencia visual para informes técnicos.
-            Analiza las imágenes proporcionadas y genera una descripción detallada, técnica y estructurada.
-            
-            Contexto adicional: "${text || 'Sin contexto específico'}"
-            
-            ESTRUCTURA REQUERIDA:
-            **Descripción General:**
-            [Descripción global de lo que se observa]
+            const imageCount = images.length;
+            const contextText = text && text.trim() ? text.trim() : null;
 
-            **Detalles Técnicos:**
-            [Detalles específicos sobre estado, materiales, daños o condiciones observadas]
+            prompt = `Eres un trabajador técnico que está redactando el informe de una actividad que acaba de realizar. Tienes ${imageCount > 1 ? `${imageCount} fotos` : 'una foto'} de lo que hiciste y debes describir el trabajo en tus propias palabras, de forma clara y directa.
+${contextText ? `\nContexto de la tarea: "${contextText}"` : ''}
 
-            **Observaciones:**
-            [Conclusiones o notas relevantes basadas en la evidencia visual]
-            
-            REGLAS:
-            1. Sé objetivo y técnico.
-            2. Usa **negritas** para los encabezados.
-            3. Redacta en tercera persona.
-            `;
+CÓMO DEBES ESCRIBIR:
+- Escribe como si tú mismo hubieras hecho el trabajo y estuvieras explicando qué se hizo, cómo se hizo y en qué estado quedó.
+- Usa un tono profesional pero natural, como lo haría un técnico o trabajador de campo al reportar su actividad.
+- Describe lo que se ve en las fotos de manera concreta: qué materiales, herramientas, equipos o personas hay, qué estado tiene el área, qué se instaló, reparó, limpió o realizó.
+- Organiza el texto con párrafos cortos y claros. Puedes usar **negritas** para los temas principales si lo ves necesario.
+- NO uses frases como "La imagen muestra..." ni "Se puede observar que...". Escribe directamente: "Se realizó...", "Se instaló...", "El área quedó...", "Se verificó...", etc.
+- NO uses lenguaje académico ni estructuras rígidas con encabezados obligatorios.
+- NO añadas líneas en blanco extra entre párrafos.
+- El informe debe ser suficientemente claro para que cualquier persona entienda qué se hizo.
+- Devuelve ÚNICAMENTE el texto del informe, sin introducción ni comentarios adicionales.`;
 
-            // Process Images
-            // images is array of filenames relative to uploads folder, or full URLs. 
-            // Assuming simplified filename or path relative to 'uploads'
+            // Process Images with dynamic MIME type detection
             imageParts = images.map(img => {
-                // Remove 'uploads/' prefix if present to safely join path
                 const cleanPath = img.replace(/^uploads[\\/]/, '');
                 const imagePath = path.join(__dirname, 'uploads', cleanPath);
-
-                // Read image file
                 const imageBuffer = fs.readFileSync(imagePath);
+                const ext = path.extname(cleanPath).toLowerCase();
+                const mimeTypeMap = {
+                    '.jpg': 'image/jpeg',
+                    '.jpeg': 'image/jpeg',
+                    '.png': 'image/png',
+                    '.webp': 'image/webp',
+                    '.gif': 'image/gif',
+                    '.avif': 'image/avif',
+                    '.bmp': 'image/bmp',
+                };
+                const mimeType = mimeTypeMap[ext] || 'image/jpeg';
                 return {
                     inlineData: {
                         data: imageBuffer.toString("base64"),
-                        mimeType: "image/jpeg" // Adjust based on extension if needed, but jpeg usually works for both
+                        mimeType: mimeType
                     },
                 };
             });
         } else if (mode === 'generate_report') {
-            prompt = `
-            Actúa como un redactor técnico experto en informes de mantenimiento y obras bajo normas APA.
-            Tu tarea es ESCRIBIR un informe detallado y profesional basado en las siguientes instrucciones.
+            const hasImages = images && images.length > 0;
 
-            Instrucciones:
-            "${text}"
+            if (hasImages) {
+                prompt = `Eres un trabajador técnico redactando el informe de una actividad que acabas de realizar. Tienes ${images.length} foto(s) del trabajo hecho y las siguientes instrucciones de tu supervisor sobre qué incluir:
 
-            REGLAS:
-            1. **Estilo APA:** Redacción en tercera persona, tono formal y objetivo.
-            2. **Estructura:**
-               - Usa **negritas** para Títulos y Subtítulos.
-               - Organiza el texto en párrafos claros.
-               - Usa viñetas para listas.
-            3. **Contenido:**
-               - Comienza con un título descriptivo en **Negrita**.
-               - Desarrolla el cuerpo del informe con claridad técnica.
-            4. Solo devuelve el contenido del informe.
-            `;
+"${text}"
+
+CÓMO DEBES ESCRIBIR:
+- Escribe el informe como si tú mismo lo hubieras hecho: describe qué se hizo, cómo se hizo, qué materiales o equipos se usaron, y en qué condiciones quedó el trabajo.
+- Usa un tono directo y profesional, como lo haría un técnico o trabajador de campo al reportar su actividad.
+- Analiza las fotos en detalle e integra lo que ves de forma natural en el texto.
+- Describe concretamente lo que se aprecia en las imágenes: materiales, equipos, personas, estado del área, instalaciones, etc.
+- Escribe con frases directas: "Se realizó...", "Se instaló...", "El área quedó...", "Se revisó...", "Se evidenció...". Evita "La imagen muestra..." o "Se puede observar que...".
+- Organiza el texto en párrafos cortos y claros. Usa **negritas** para los puntos principales si lo ves necesario.
+- NO uses lenguaje académico rígido ni encabezados formales obligatorios como "Descripción General:", "Conclusión:", etc., a menos que el usuario los pida explícitamente.
+- NO añadas líneas en blanco extra entre párrafos.
+- Devuelve ÚNICAMENTE el texto del informe, sin introducción ni comentarios.`;
+
+                // Process images
+                imageParts = images.map(img => {
+                    const cleanPath = img.replace(/^uploads[\\/]/, '');
+                    const imagePath = path.join(__dirname, 'uploads', cleanPath);
+                    const imageBuffer = fs.readFileSync(imagePath);
+                    const ext = path.extname(cleanPath).toLowerCase();
+                    const mimeTypeMap = {
+                        '.jpg': 'image/jpeg',
+                        '.jpeg': 'image/jpeg',
+                        '.png': 'image/png',
+                        '.webp': 'image/webp',
+                        '.gif': 'image/gif',
+                        '.avif': 'image/avif',
+                        '.bmp': 'image/bmp',
+                    };
+                    const mimeType = mimeTypeMap[ext] || 'image/jpeg';
+                    return {
+                        inlineData: {
+                            data: imageBuffer.toString("base64"),
+                            mimeType: mimeType
+                        },
+                    };
+                });
+            } else {
+                // No images – generate from prompt only
+                prompt = `Eres un trabajador técnico redactando el informe de una actividad. Tu supervisor te dio las siguientes instrucciones sobre qué escribir:
+
+"${text}"
+
+CÓMO DEBES ESCRIBIR:
+- Escribe como si tú mismo hubieras realizado la actividad y estuvieras reportando lo que se hizo.
+- Usa un tono directo y profesional, como lo haría un técnico o trabajador de campo.
+- Organiza el texto con párrafos cortos y claros. Puedes usar **negritas** para los puntos principales.
+- Usa frases naturales y directas. No uses lenguaje académico ni encabezados formales obligatorios.
+- NO añadas líneas en blanco extra entre párrafos.
+- Devuelve ÚNICAMENTE el texto del informe, sin introducción ni comentarios.`;
+            }
         } else {
             // Default to grammar fix if no mode specified
-            prompt = `Corregir ortografía y gramática manteniendo formato APA: "${text}"`;
+            prompt = `Corrige la ortografía y gramática del siguiente texto manteniendo el estilo original del autor: "${text}"`;
         }
 
         let result;
@@ -734,7 +779,14 @@ app.post('/api/ai/improve', authenticateToken, async (req, res) => {
         }
 
         const response = await result.response;
-        const improvedText = response.text();
+        // Clean up AI output: remove trailing spaces per line, collapse 3+ consecutive blank lines to one
+        const rawText = response.text();
+        const improvedText = rawText
+            .split('\n')
+            .map(line => line.trimEnd())           // strip trailing spaces/tabs from each line
+            .join('\n')
+            .replace(/\n{3,}/g, '\n\n')            // collapse 3+ blank lines → max 1 blank line between paragraphs
+            .trim();                               // remove leading/trailing whitespace from the whole text
         const usage = response.usageMetadata; // { promptTokenCount, candidatesTokenCount, totalTokenCount }
 
         res.json({ improvedText, usage });
