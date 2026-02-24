@@ -132,8 +132,18 @@ const initDB = async () => {
                 task_id INTEGER REFERENCES tasks(id) ON DELETE CASCADE,
                 file_path TEXT NOT NULL,
                 file_type TEXT,
+                sort_order INTEGER DEFAULT 0,
                 uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+        `);
+
+        // Add sort_order to existing task_evidence rows (migration)
+        await pool.query(`
+            ALTER TABLE task_evidence ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0;
+        `);
+        // Initialize sort_order = id for existing rows that have 0
+        await pool.query(`
+            UPDATE task_evidence SET sort_order = id WHERE sort_order = 0;
         `);
 
         // Add start_date column if it doesn't exist (Migration)
@@ -396,6 +406,7 @@ app.get('/api/projects', authenticateToken, async (req, res) => {
             JOIN tasks t ON te.task_id = t.id
             JOIN projects p ON t.project_id = p.id
             WHERE p.user_id = $1
+            ORDER BY te.sort_order ASC, te.id ASC
         `;
         const evidenceResult = await pool.query(evidenceQuery, [req.user.id]);
         const allEvidence = evidenceResult.rows;
@@ -531,14 +542,43 @@ app.post('/api/tasks/:id/evidence', authenticateToken, upload.array('files'), as
         for (const file of files) {
             // Store relative path to DB
             const filePath = `uploads/${file.filename}`;
+            // Set sort_order to a high number so new images go to the end
+            const maxOrderRes = await pool.query(
+                'SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM task_evidence WHERE task_id = $1',
+                [id]
+            );
+            const nextOrder = maxOrderRes.rows[0].next_order;
             const result = await pool.query(
-                'INSERT INTO task_evidence (task_id, file_path, file_type) VALUES ($1, $2, $3) RETURNING *',
-                [id, filePath, file.mimetype]
+                'INSERT INTO task_evidence (task_id, file_path, file_type, sort_order) VALUES ($1, $2, $3, $4) RETURNING *',
+                [id, filePath, file.mimetype, nextOrder]
             );
             uploadedFiles.push(result.rows[0]);
         }
         res.json(uploadedFiles);
     } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Reorder evidence images
+app.put('/api/evidence/reorder', authenticateToken, async (req, res) => {
+    const { orderedIds } = req.body; // Array of evidence IDs in desired order
+    if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+        return res.status(400).json({ error: 'orderedIds array required' });
+    }
+    try {
+        // Update each row's sort_order in a single transaction
+        await pool.query('BEGIN');
+        for (let i = 0; i < orderedIds.length; i++) {
+            await pool.query(
+                'UPDATE task_evidence SET sort_order = $1 WHERE id = $2',
+                [i + 1, orderedIds[i]]
+            );
+        }
+        await pool.query('COMMIT');
+        res.json({ message: 'Order saved' });
+    } catch (err) {
+        await pool.query('ROLLBACK');
         res.status(500).json({ error: err.message });
     }
 });

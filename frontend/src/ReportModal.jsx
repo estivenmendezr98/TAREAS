@@ -11,6 +11,21 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
     const [selectedEvidence, setSelectedEvidence] = useState(null); // Fullscreen viewer inside modal
     const [evidenceToDelete, setEvidenceToDelete] = useState(null); // ID of evidence to delete
 
+    // Local ordered evidence (user can drag to reorder; doesn't affect DB order)
+    const [orderedEvidence, setOrderedEvidence] = useState(() => task.evidence || []);
+    const [dragIndex, setDragIndex] = useState(null);
+
+    // Sync orderedEvidence when task.evidence changes (upload / delete)
+    useEffect(() => {
+        setOrderedEvidence(prev => {
+            const currentIds = new Set((task.evidence || []).map(e => e.id));
+            const kept = prev.filter(e => currentIds.has(e.id)); // preserve order for existing
+            const prevIds = new Set(prev.map(e => e.id));
+            const added = (task.evidence || []).filter(e => !prevIds.has(e.id)); // new ones appended
+            return [...kept, ...added];
+        });
+    }, [task.evidence]);
+
     // AI States
     const [isImproving, setIsImproving] = useState(false);
     const [aiReviewMode, setAiReviewMode] = useState(false);
@@ -34,6 +49,17 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
         } catch (error) {
             console.error('Error saving report:', error);
             addToast('Error al guardar el informe', 'error');
+        }
+    };
+
+    // Persist evidence order to DB
+    const saveOrder = async (list) => {
+        try {
+            await axios.put('http://localhost:3000/api/evidence/reorder', {
+                orderedIds: list.map(e => e.id)
+            });
+        } catch (error) {
+            console.error('Error saving image order:', error);
         }
     };
 
@@ -90,7 +116,7 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
             return;
         }
 
-        if (mode === 'analyze_images' && (!task.evidence || task.evidence.length === 0)) {
+        if (mode === 'analyze_images' && orderedEvidence.length === 0) {
             addToast('Sube fotos primero para analizarlas', 'warning');
             return;
         }
@@ -105,9 +131,9 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
                         ? `Tarea: "${task.descripcion}"${reportContent && reportContent.trim() ? `\n\nObservaciones previas: "${reportContent.trim()}"` : ''}`
                         : reportContent,
                 mode: mode,
-                // For both analyze_images and generate_report, send all task images
+                // Send images in the ORDER the user arranged them
                 images: (mode === 'analyze_images' || mode === 'generate_report')
-                    ? (task.evidence ? task.evidence.map(e => e.file_path) : [])
+                    ? orderedEvidence.map(e => e.file_path)
                     : []
             };
 
@@ -477,7 +503,7 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
                                 </p>
 
                                 {/* Image badge */}
-                                {task.evidence && task.evidence.length > 0 ? (
+                                {orderedEvidence.length > 0 ? (
                                     <div style={{
                                         display: 'flex', alignItems: 'center', gap: '0.5rem',
                                         background: '#f5f3ff', border: '1px solid #ddd6fe',
@@ -486,7 +512,7 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
                                     }}>
                                         <Camera size={16} color="#7c3aed" />
                                         <span>
-                                            <strong>{task.evidence.length}</strong> {task.evidence.length === 1 ? 'imagen será' : 'imágenes serán'} incluidas en el análisis
+                                            <strong>{orderedEvidence.length}</strong> {orderedEvidence.length === 1 ? 'imagen será' : 'imágenes serán'} incluidas en el análisis (en el orden actual)
                                         </span>
                                     </div>
                                 ) : (
@@ -517,7 +543,7 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
                                         disabled={!promptText.trim()}
                                         style={{ padding: '0.6rem 1.2rem', border: 'none', background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)', color: 'white', borderRadius: '8px', cursor: 'pointer', fontWeight: '500', opacity: !promptText.trim() ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 4px 6px -1px rgba(124,58,237,0.4)' }}
                                     >
-                                        <Sparkles size={16} /> {task.evidence && task.evidence.length > 0 ? 'Generar con Imágenes' : 'Generar'}
+                                        <Sparkles size={16} /> {orderedEvidence.length > 0 ? 'Generar con Imágenes' : 'Generar'}
                                     </button>
                                 </div>
                             </div>
@@ -569,9 +595,46 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
                         </div>
 
                         <div className="modal-gallery">
-                            {task.evidence && task.evidence.length > 0 ? (
-                                task.evidence.map((ev) => (
-                                    <div key={ev.id} className="modal-thumbnail-wrapper">
+                            {orderedEvidence.length > 0 ? (
+                                orderedEvidence.map((ev, index) => (
+                                    <div
+                                        key={ev.id}
+                                        className="modal-thumbnail-wrapper"
+                                        draggable
+                                        onDragStart={() => setDragIndex(index)}
+                                        onDragOver={(e) => {
+                                            e.preventDefault();
+                                            if (dragIndex === null || dragIndex === index) return;
+                                            const newList = [...orderedEvidence];
+                                            const [moved] = newList.splice(dragIndex, 1);
+                                            newList.splice(index, 0, moved);
+                                            setOrderedEvidence(newList);
+                                            setDragIndex(index);
+                                        }}
+                                        onDragEnd={() => {
+                                            setDragIndex(null);
+                                            saveOrder(orderedEvidence);
+                                        }}
+                                        style={{
+                                            opacity: dragIndex === index ? 0.4 : 1,
+                                            cursor: 'grab',
+                                            position: 'relative',
+                                            transition: 'opacity 0.15s'
+                                        }}
+                                    >
+                                        {/* Order number badge */}
+                                        <div style={{
+                                            position: 'absolute', top: 5, left: 5, zIndex: 10,
+                                            background: '#3b82f6', color: 'white',
+                                            borderRadius: '50%', width: 22, height: 22,
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            fontSize: '0.7rem', fontWeight: 700,
+                                            boxShadow: '0 1px 4px rgba(0,0,0,0.35)',
+                                            pointerEvents: 'none', userSelect: 'none'
+                                        }}>
+                                            {index + 1}
+                                        </div>
+
                                         <div className="modal-thumbnail" onClick={() => setSelectedEvidence(ev)}>
                                             <img src={`http://localhost:3000/${ev.file_path}`} alt="Evidencia" />
                                         </div>
