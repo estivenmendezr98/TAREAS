@@ -143,6 +143,107 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
 
     const [showAiMenu, setShowAiMenu] = useState(false);
 
+    // Helper: renders report content with inline images after each **Imagen(es) N** / **Imagen N-M** block
+    const renderReportWithImages = (text, evidence) => {
+        if (!text) return null;
+
+        // Marker regex: matches **Imagen N** or **Imágenes N-M** (with or without accent)
+        // CORRECT: Im(?:a|á)gen(?:es)? matches both "Imagen" and "Imágenes"
+        const MARKER_RE = /(\*\*Im(?:a|á)gen(?:es)?\s+[\d][^*]*\*\*)/gi;
+        const hasImageMarkers = MARKER_RE.test(text);
+
+        if (!hasImageMarkers || !evidence || evidence.length === 0) {
+            return (
+                <div
+                    dangerouslySetInnerHTML={{ __html: renderMarkdown(text) }}
+                    style={{
+                        width: '100%', minHeight: '120px', padding: '0.75rem',
+                        border: '1px solid #e5e7eb', borderRadius: '8px',
+                        fontFamily: 'inherit', fontSize: '1rem', lineHeight: '1.7',
+                        color: '#111827', background: '#fafafa', boxSizing: 'border-box',
+                        overflowY: 'auto', maxHeight: '400px', marginBottom: '0.5rem',
+                    }}
+                />
+            );
+        }
+
+        // Extract all digit sequences from a marker string → 0-based indices
+        // "**Imagen 11**"   → [10]
+        // "**Imágenes 9-10**" → [8, 9]
+        const resolveIndices = (marker) => {
+            const nums = [...marker.matchAll(/\d+/g)].map(m => parseInt(m[0], 10) - 1);
+            if (nums.length === 2) {
+                // Range: fill from start to end
+                const arr = [];
+                for (let i = nums[0]; i <= nums[1]; i++) arr.push(i);
+                return arr;
+            }
+            return nums; // single number
+        };
+
+        // Split text on any image marker (case-insensitive)
+        const splitRE = /(\*\*Im(?:a|á)gen(?:es)?\s+[\d][^*]*\*\*)/gi;
+        const parts = text.split(splitRE);
+        const blocks = [];
+        let currentIndices = [];
+
+        parts.forEach((part) => {
+            if (/^\*\*Im(?:a|á)gen(?:es)?\s+\d/i.test(part.trim())) {
+                currentIndices = resolveIndices(part);
+                blocks.push({ type: 'heading', label: part.replace(/\*\*/g, '').trim(), imgIndices: [...currentIndices] });
+            } else if (part.trim()) {
+                blocks.push({ type: 'text', content: part, imgIndices: [...currentIndices] });
+            }
+        });
+
+        return (
+            <div style={{
+                width: '100%', padding: '0.75rem', border: '1px solid #e5e7eb', borderRadius: '8px',
+                background: '#fafafa', marginBottom: '0.5rem', boxSizing: 'border-box'
+            }}>
+                {blocks.map((block, i) => {
+                    if (block.type === 'heading') {
+                        return (
+                            <p key={i} style={{ fontWeight: 700, color: '#1d4ed8', margin: '1rem 0 0.25rem', fontSize: '0.95rem' }}>
+                                {block.label}
+                            </p>
+                        );
+                    }
+                    if (block.type === 'text') {
+                        return (
+                            <div key={i}>
+                                <div
+                                    dangerouslySetInnerHTML={{ __html: renderMarkdown(block.content) }}
+                                    style={{ fontSize: '0.95rem', lineHeight: '1.7', color: '#111827', marginBottom: '0.5rem' }}
+                                />
+                                {/* Render all photos for this block */}
+                                {block.imgIndices.map((idx) => {
+                                    const ev = evidence[idx];
+                                    if (!ev) return null;
+                                    return (
+                                        <div key={idx} style={{ textAlign: 'center', margin: '0.5rem 0 0.75rem' }}>
+                                            <img
+                                                src={`http://localhost:3000/${ev.file_path}`}
+                                                alt={`Imagen ${idx + 1}`}
+                                                style={{
+                                                    maxWidth: '100%', maxHeight: '360px',
+                                                    borderRadius: '8px', border: '1px solid #e5e7eb',
+                                                    boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                                                    objectFit: 'contain'
+                                                }}
+                                            />
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        );
+                    }
+                    return null;
+                })}
+            </div>
+        );
+    };
+
     // Helper: converts markdown to HTML (bold, bullets, line breaks)
     const renderMarkdown = (text) => {
         if (!text) return '';
@@ -370,26 +471,10 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
                                                 </span>
                                             )}
                                         </div>
-                                        {/* Rendered preview with bold support */}
-                                        <div
-                                            dangerouslySetInnerHTML={{ __html: renderMarkdown(improvedText) }}
-                                            style={{
-                                                width: '100%',
-                                                minHeight: '150px',
-                                                padding: '1.5rem',
-                                                border: '2px solid #a7f3d0',
-                                                borderRadius: '12px',
-                                                fontFamily: 'inherit',
-                                                fontSize: '1rem',
-                                                lineHeight: '1.7',
-                                                color: '#111827',
-                                                background: '#ffffff',
-                                                marginTop: '0.5rem',
-                                                boxSizing: 'border-box',
-                                                overflowY: 'auto',
-                                                maxHeight: '300px'
-                                            }}
-                                        />
+                                        {/* Rendered preview: shows images inline if Imagen N markers present */}
+                                        <div style={{ marginTop: '0.5rem', border: '2px solid #a7f3d0', borderRadius: '12px', padding: '1.5rem', background: '#ffffff', maxHeight: '500px', overflowY: 'auto' }}>
+                                            {renderReportWithImages(improvedText, orderedEvidence)}
+                                        </div>
                                         {/* Editable raw text below */}
                                         <textarea
                                             value={improvedText}
@@ -460,26 +545,13 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
                             </div>
                         ) : (
                             <>
-                                {/* Rendered preview: shows bold text from **markdown** */}
-                                {reportContent && reportContent.includes('**') ? (
+                                {/* Rendered preview: shows report with inline images if Imagen N markers present */}
+                                {reportContent && /\*\*Im(?:a|á)gen(?:es)?\s+\d/i.test(reportContent) ? (
+                                    renderReportWithImages(reportContent, orderedEvidence)
+                                ) : reportContent ? (
                                     <div
                                         dangerouslySetInnerHTML={{ __html: renderMarkdown(reportContent) }}
-                                        style={{
-                                            width: '100%',
-                                            minHeight: '120px',
-                                            padding: '0.75rem',
-                                            border: '1px solid #e5e7eb',
-                                            borderRadius: '8px',
-                                            fontFamily: 'inherit',
-                                            fontSize: '1rem',
-                                            lineHeight: '1.7',
-                                            color: '#111827',
-                                            background: '#fafafa',
-                                            boxSizing: 'border-box',
-                                            overflowY: 'auto',
-                                            maxHeight: '200px',
-                                            marginBottom: '0.5rem',
-                                        }}
+                                        style={{ width: '100%', minHeight: '80px', padding: '0.75rem', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '1rem', lineHeight: '1.7', color: '#111827', background: '#fafafa', boxSizing: 'border-box', overflowY: 'auto', maxHeight: '400px', marginBottom: '0.5rem' }}
                                     />
                                 ) : null}
                                 <textarea
@@ -577,7 +649,7 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
                                     <Sparkles size={20} color="#7c3aed" /> Generar Informe con IA
                                 </h3>
                                 <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '1rem' }}>
-                                    Describe qué quieres que incluya el informe. La IA usará tu prompt junto con la evidencia fotográfica.
+                                    Describe el tema o contexto de la actividad. La IA generará el informe <strong>imagen por imagen</strong>, analizando con detalle qué se hace, qué materiales se usan y para qué.
                                 </p>
 
                                 {/* Image badge */}

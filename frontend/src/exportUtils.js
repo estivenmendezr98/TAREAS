@@ -74,179 +74,171 @@ const parseMarkdownToParagraphs = (text) => {
     return paragraphs;
 };
 
+// Helper: fetch one evidence image and push it into children[]
+const addImageToDoc = async (ev, children) => {
+    try {
+        const normalizedPath = ev.file_path.replace(/\\/g, '/');
+        const imageUrl = `http://localhost:3000/${normalizedPath}`;
+        const response = await fetch(imageUrl);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+        const blob = await response.blob();
+        const arrayBuffer = await blob.arrayBuffer();
+
+        const getImageDimensions = (b) => new Promise((resolve, reject) => {
+            const img = new Image();
+            const url = URL.createObjectURL(b);
+            img.onload = () => { resolve({ width: img.naturalWidth, height: img.naturalHeight }); URL.revokeObjectURL(url); };
+            img.onerror = (err) => { URL.revokeObjectURL(url); reject(err); };
+            img.src = url;
+        });
+
+        const { width: originalWidth, height: originalHeight } = await getImageDimensions(blob);
+        const MAX_WIDTH = 450;
+        let targetWidth = originalWidth;
+        let targetHeight = originalHeight;
+        if (originalWidth > MAX_WIDTH) {
+            const ratio = MAX_WIDTH / originalWidth;
+            targetWidth = MAX_WIDTH;
+            targetHeight = Math.round(originalHeight * ratio);
+        }
+
+        children.push(new Paragraph({
+            children: [new ImageRun({
+                data: arrayBuffer,
+                transformation: { width: targetWidth, height: targetHeight },
+                type: "png",
+            })],
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 120, after: 240 },
+        }));
+    } catch (error) {
+        console.error("Error loading image for docx:", error);
+        children.push(new Paragraph({
+            text: `[Error al cargar imagen: ${ev.file_path}]`,
+            color: "FF0000",
+        }));
+    }
+};
+
 export const generateDocx = async (reportTitle, sections) => {
     const children = [];
 
     // --- APA Title Page ---
-    // Blank line spacer from top
     children.push(new Paragraph({ text: '', spacing: { before: 1440, after: 0 } }));
 
     // Centered Bold Title (APA)
-    children.push(
-        new Paragraph({
-            children: [new TextRun({
-                text: reportTitle,
-                bold: true,
-                font: "Times New Roman",
-                size: 28, // 14pt for title
-            })],
-            alignment: AlignmentType.CENTER,
-            spacing: { before: 0, after: 240, line: APA_DOUBLE_SPACE },
-        })
-    );
+    children.push(new Paragraph({
+        children: [new TextRun({ text: reportTitle, bold: true, font: "Times New Roman", size: 28 })],
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 0, after: 240, line: APA_DOUBLE_SPACE },
+    }));
 
     // Fecha centered
-    children.push(
-        new Paragraph({
-            children: [new TextRun({
-                text: new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }),
-                font: "Times New Roman",
-                size: APA_BODY_SIZE,
-            })],
-            alignment: AlignmentType.CENTER,
-            spacing: { after: APA_DOUBLE_SPACE, line: APA_DOUBLE_SPACE },
-        })
-    );
+    children.push(new Paragraph({
+        children: [new TextRun({
+            text: new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }),
+            font: "Times New Roman",
+            size: APA_BODY_SIZE,
+        })],
+        alignment: AlignmentType.CENTER,
+        spacing: { after: APA_DOUBLE_SPACE, line: APA_DOUBLE_SPACE },
+    }));
 
     // --- Content ---
-
     for (const section of sections) {
         // Project Title (Level 1 Heading)
-        children.push(
-            new Paragraph({
-                text: `Proyecto: ${section.projectTitle}`,
-                heading: HeadingLevel.HEADING_1,
-                spacing: { before: 480, after: 240 },
-                border: {
-                    bottom: {
-                        color: "auto",
-                        space: 1,
-                        value: "single",
-                        size: 6,
-                    },
-                },
-                pageBreakBefore: true, // Start each project on a new page
-            })
-        );
+        children.push(new Paragraph({
+            text: `Proyecto: ${section.projectTitle}`,
+            heading: HeadingLevel.HEADING_1,
+            spacing: { before: 480, after: 240 },
+            border: {
+                bottom: { color: "auto", space: 1, value: "single", size: 6 },
+            },
+            pageBreakBefore: true,
+        }));
 
         if (section.tasks.length === 0) {
-            children.push(
-                new Paragraph({
-                    text: 'No hay tareas seleccionadas para este proyecto.',
-                    italics: true
-                })
-            );
+            children.push(new Paragraph({ text: 'No hay tareas seleccionadas para este proyecto.', italics: true }));
             continue;
         }
 
         for (const task of section.tasks) {
-            // Task Title - APA Level 2 (Left-aligned, Bold)
-            children.push(
-                new Paragraph({
-                    text: task.descripcion,
-                    heading: HeadingLevel.HEADING_2,
-                    spacing: { before: APA_DOUBLE_SPACE, after: 0, line: APA_DOUBLE_SPACE },
-                })
-            );
+            // Task Title - APA Level 2
+            children.push(new Paragraph({
+                text: task.descripcion,
+                heading: HeadingLevel.HEADING_2,
+                spacing: { before: APA_DOUBLE_SPACE, after: 0, line: APA_DOUBLE_SPACE },
+            }));
 
-
-
-
-            // Report Content - APA Level 3 heading + body text
             if (task.report_content) {
-                children.push(
-                    new Paragraph({
-                        text: "Observaciones",
-                        heading: HeadingLevel.HEADING_3,
-                        spacing: { before: APA_DOUBLE_SPACE, after: 0, line: APA_DOUBLE_SPACE },
-                    })
-                );
-                // Parse full markdown into proper paragraphs (handles bullets, bold, blank lines)
-                const contentParagraphs = parseMarkdownToParagraphs(task.report_content);
-                contentParagraphs.forEach(p => children.push(p));
-            }
+                // "Observaciones" heading
+                children.push(new Paragraph({
+                    text: "Observaciones",
+                    heading: HeadingLevel.HEADING_3,
+                    spacing: { before: APA_DOUBLE_SPACE, after: 0, line: APA_DOUBLE_SPACE },
+                }));
 
-            // Evidence Images
-            if (task.evidence && task.evidence.length > 0) {
-                children.push(
-                    new Paragraph({
-                        text: "Evidencia Fotográfica",
-                        heading: HeadingLevel.HEADING_3,
-                        spacing: { before: APA_DOUBLE_SPACE, after: 0, line: APA_DOUBLE_SPACE },
-                    })
-                );
+                // CORRECT regex: Im(?:a|á)gen(?:es)? matches "Imagen" (singular) and "Imágenes" (plural)
+                const hasImageMarkers = /\*\*Im(?:a|á)gen(?:es)?\s+\d/i.test(task.report_content);
 
-                for (const ev of task.evidence) {
-                    try {
-                        // Normalize path to use forward slashes and ensure no double slashes
-                        const normalizedPath = ev.file_path.replace(/\\/g, '/');
-                        const imageUrl = `http://localhost:3000/${normalizedPath}`;
-
-                        const response = await fetch(imageUrl);
-                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-                        const blob = await response.blob();
-                        const arrayBuffer = await blob.arrayBuffer();
-
-                        // Robust way to get image dimensions
-                        const getImageDimensions = (blob) => {
-                            return new Promise((resolve, reject) => {
-                                const img = new Image();
-                                const url = URL.createObjectURL(blob);
-                                img.onload = () => {
-                                    resolve({ width: img.naturalWidth, height: img.naturalHeight });
-                                    URL.revokeObjectURL(url);
-                                };
-                                img.onerror = (err) => {
-                                    URL.revokeObjectURL(url);
-                                    reject(err);
-                                };
-                                img.src = url;
-                            });
-                        };
-
-                        const dimensions = await getImageDimensions(blob);
-                        const originalWidth = dimensions.width;
-                        const originalHeight = dimensions.height;
-
-                        const MAX_WIDTH = 450; // Slightly smaller to fit with indentation
-                        let targetWidth = originalWidth;
-                        let targetHeight = originalHeight;
-
-                        // Scale down if too big
-                        if (originalWidth > MAX_WIDTH) {
-                            const ratio = MAX_WIDTH / originalWidth;
-                            targetWidth = MAX_WIDTH;
-                            targetHeight = Math.round(originalHeight * ratio);
+                if (hasImageMarkers && task.evidence && task.evidence.length > 0) {
+                    // Resolve marker → 0-based indices array
+                    const resolveIndices = (marker) => {
+                        const nums = [...marker.matchAll(/\d+/g)].map(m => parseInt(m[0], 10) - 1);
+                        if (nums.length === 2) {
+                            const arr = [];
+                            for (let i = nums[0]; i <= nums[1]; i++) arr.push(i);
+                            return arr;
                         }
+                        return nums;
+                    };
 
-                        children.push(
-                            new Paragraph({
-                                children: [
-                                    new ImageRun({
-                                        data: arrayBuffer,
-                                        transformation: {
-                                            width: targetWidth,
-                                            height: targetHeight,
-                                        },
-                                        type: "png",
-                                    }),
-                                ],
-                                alignment: AlignmentType.CENTER,
-                                indent: { left: 720 },
-                                spacing: { after: 240 },
-                            })
-                        );
-                    } catch (error) {
-                        console.error("Error loading image for docx:", error);
-                        children.push(
-                            new Paragraph({
-                                text: `[Error al cargar imagen: ${ev.file_path}]`,
-                                color: "FF0000",
-                                indent: { left: 720 },
-                            })
-                        );
+                    // Split on markers (keep them), tolerating accent variations
+                    const parts = task.report_content.split(/(\*\*Im(?:a|á)gen(?:es)?\s+[\d][^*]*\*\*)/gi);
+                    let currentIndices = [];
+
+                    for (const part of parts) {
+                        if (/^\*\*Im(?:a|á)gen(?:es)?\s+\d/i.test(part.trim())) {
+                            currentIndices = resolveIndices(part);
+                            const label = part.replace(/\*\*/g, '').trim();
+                            children.push(new Paragraph({
+                                children: [new TextRun({ text: label, bold: true, font: 'Times New Roman', size: APA_BODY_SIZE })],
+                                spacing: { before: 240, after: 60, line: APA_DOUBLE_SPACE },
+                            }));
+                        } else if (part.trim()) {
+                            parseMarkdownToParagraphs(part).forEach(p => children.push(p));
+                            for (const idx of currentIndices) {
+                                const ev = task.evidence[idx];
+                                if (ev) await addImageToDoc(ev, children);
+                            }
+                        }
                     }
+                } else {
+                    // No image markers — normal text render
+                    parseMarkdownToParagraphs(task.report_content).forEach(p => children.push(p));
+
+                    // All evidence images appended at the end (legacy behavior)
+                    if (task.evidence && task.evidence.length > 0) {
+                        children.push(new Paragraph({
+                            text: "Evidencia Fotográfica",
+                            heading: HeadingLevel.HEADING_3,
+                            spacing: { before: APA_DOUBLE_SPACE, after: 0, line: APA_DOUBLE_SPACE },
+                        }));
+                        for (const ev of task.evidence) {
+                            await addImageToDoc(ev, children);
+                        }
+                    }
+                }
+            } else if (task.evidence && task.evidence.length > 0) {
+                // No report text but has images — show them all
+                children.push(new Paragraph({
+                    text: "Evidencia Fotográfica",
+                    heading: HeadingLevel.HEADING_3,
+                    spacing: { before: APA_DOUBLE_SPACE, after: 0, line: APA_DOUBLE_SPACE },
+                }));
+                for (const ev of task.evidence) {
+                    await addImageToDoc(ev, children);
                 }
             }
         }
@@ -271,7 +263,7 @@ export const generateDocx = async (reportTitle, sections) => {
                     run: { font: "Times New Roman", size: APA_BODY_SIZE, bold: true, italics: true, color: "000000" },
                     paragraph: { alignment: AlignmentType.LEFT, spacing: { line: APA_DOUBLE_SPACE, before: APA_DOUBLE_SPACE, after: 0 } },
                 },
-                // APA title styling (used for main report title)
+                // APA title styling
                 title: {
                     run: { font: "Times New Roman", size: 28, bold: true, color: "000000" },
                     paragraph: { alignment: AlignmentType.CENTER, spacing: { line: APA_DOUBLE_SPACE, before: 0, after: APA_DOUBLE_SPACE } },
@@ -299,12 +291,7 @@ export const generateDocx = async (reportTitle, sections) => {
                     default: new Header({
                         children: [
                             new Paragraph({
-                                children: [
-                                    new TextRun({
-                                        children: [PageNumber.CURRENT],
-                                        font: "Arial",
-                                    }),
-                                ],
+                                children: [new TextRun({ children: [PageNumber.CURRENT], font: "Arial" })],
                                 alignment: AlignmentType.RIGHT,
                                 indent: { firstLine: 0 },
                             }),
@@ -315,14 +302,12 @@ export const generateDocx = async (reportTitle, sections) => {
                     default: new Footer({
                         children: [
                             new Paragraph({
-                                children: [
-                                    new TextRun({
-                                        text: "Informe Generado automáticamente",
-                                        font: "Arial",
-                                        size: 16,
-                                        color: "888888",
-                                    }),
-                                ],
+                                children: [new TextRun({
+                                    text: "Informe Generado automáticamente",
+                                    font: "Arial",
+                                    size: 16,
+                                    color: "888888",
+                                })],
                                 alignment: AlignmentType.CENTER,
                                 indent: { firstLine: 0 },
                             }),

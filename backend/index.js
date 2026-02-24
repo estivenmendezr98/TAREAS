@@ -758,20 +758,32 @@ CÓMO DEBES ESCRIBIR:
             const hasImages = images && images.length > 0;
 
             if (hasImages) {
-                prompt = `Eres un trabajador técnico redactando el informe de una actividad que acabas de realizar. Tienes ${images.length} foto(s) del trabajo hecho y las siguientes instrucciones de tu supervisor sobre qué incluir:
+                prompt = `Eres un redactor técnico de campo que está elaborando el informe de una actividad. Recibes ${images.length} imagen(es) numeradas en orden (Imagen 1, Imagen 2, ..., Imagen ${images.length}) y las siguientes instrucciones del supervisor como guía temática:
 
 "${text}"
 
-CÓMO DEBES ESCRIBIR:
-- Escribe el informe como si tú mismo lo hubieras hecho: describe qué se hizo, cómo se hizo, qué materiales o equipos se usaron, y en qué condiciones quedó el trabajo.
-- Usa un tono directo y profesional, como lo haría un técnico o trabajador de campo al reportar su actividad.
-- Analiza las fotos en detalle e integra lo que ves de forma natural en el texto.
-- Describe concretamente lo que se aprecia en las imágenes: materiales, equipos, personas, estado del área, instalaciones, etc.
-- Escribe con frases directas: "Se realizó...", "Se instaló...", "El área quedó...", "Se revisó...", "Se evidenció...". Evita "La imagen muestra..." o "Se puede observar que...".
-- Organiza el texto en párrafos cortos y claros. Usa **negritas** para los puntos principales si lo ves necesario.
-- NO uses lenguaje académico rígido ni encabezados formales obligatorios como "Descripción General:", "Conclusión:", etc., a menos que el usuario los pida explícitamente.
-- NO añadas líneas en blanco extra entre párrafos.
-- Devuelve ÚNICAMENTE el texto del informe, sin introducción ni comentarios.`;
+ESTRUCTURA DEL INFORME:
+- Analiza cada imagen antes de escribir. Si dos o más imágenes consecutivas muestran la MISMA actividad desde distintos ángulos o etapas muy cercanas del mismo proceso, agrúpalas en un solo bloque.
+- Si una imagen muestra algo claramente distinto a la anterior, crea un bloque separado para ella.
+- Los formatos válidos de encabezado son:
+  - Una sola imagen:   **Imagen [N]**
+  - Rango continuo:   **Imágenes [N]-[M]**
+- Después del encabezado escribe UN párrafo descriptivo que cubra todas las imágenes del bloque.
+
+CÓMO ANALIZAR CADA IMAGEN CON PRECISIÓN:
+- Observa y describe con detalle qué actividad específica se está realizando.
+- Identifica los materiales, herramientas, equipos o estructuras presentes y descríbelos con nombre si es posible (ej: "tubería PVC de 1/2 pulgada", "breaker de 20A", "concreto de piso", "manguera hidráulica", etc.).
+- Explica el propósito de lo que se está haciendo: para qué sirve esa etapa o acción dentro del proceso general.
+- Describe el estado del área, la instalación o el componente: si está en proceso, finalizado, antes/después de la intervención.
+- Si hay personas trabajando, describe brevemente qué están haciendo (sin mencionar nombres).
+
+REGLAS DE ESCRITURA:
+- Usa frases técnicas directas: "Se procedió a...", "Se instaló...", "Se verificó que...", "Quedó en condiciones de...".
+- Usa un lenguaje técnico pero claro, que cualquier supervisor o auditor entienda sin necesidad de ver las imágenes.
+- NO uses frases vagas como "La imagen muestra...", "Se puede observar que...", "En esta foto vemos...".
+- NO añadas introducciones, conclusiones generales ni comentarios fuera de los bloques.
+- Usa **negritas** para resaltar elementos o acciones clave dentro de cada párrafo.
+- Devuelve ÚNICAMENTE los bloques, sin texto adicional antes ni después.`;
 
                 // Process images
                 imageParts = images.map(img => {
