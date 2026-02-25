@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
+import { Eye } from 'lucide-react';
 
-const UsersView = () => {
+const UsersView = ({ onImpersonate }) => {
     const [users, setUsers] = useState([]);
     const [newUserStart, setNewUser] = useState({ username: '', password: '', role: 'user' });
     const [editingUser, setEditingUser] = useState(null);
     const { addToast } = useToast();
+    const { user: currentUser, impersonate } = useAuth();
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
     useEffect(() => {
@@ -25,7 +28,6 @@ const UsersView = () => {
             setUsers(response.data);
         } catch (error) {
             console.error('Error fetching users:', error);
-            // Don't toast on load error to avoid spam if unauthorized initially
         }
     };
 
@@ -34,11 +36,7 @@ const UsersView = () => {
         try {
             if (editingUser) {
                 const dataToSend = { ...newUserStart };
-                // If password is empty, don't send it (or backend handles it)
-                // Backend logic: if password provided, update it. If not, ignore.
-                if (dataToSend.password === '') {
-                    delete dataToSend.password;
-                }
+                if (dataToSend.password === '') delete dataToSend.password;
                 await axios.put(`http://localhost:3000/api/users/${editingUser.id}`, dataToSend);
                 addToast('Usuario actualizado exitosamente', 'success');
             } else {
@@ -63,6 +61,43 @@ const UsersView = () => {
         setEditingUser(null);
         setNewUser({ username: '', password: '', role: 'user' });
     };
+
+    const handleImpersonate = async (targetUser) => {
+        const result = await impersonate(targetUser.id);
+        if (result?.success) {
+            addToast(`Ahora estás viendo como: ${targetUser.username}`, 'info');
+            if (onImpersonate) onImpersonate(); // close users panel, go to active view
+        } else {
+            addToast('Error al cambiar de usuario', 'error');
+        }
+    };
+
+    const renderActions = (u) => (
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <button
+                onClick={() => handleEdit(u)}
+                style={{ padding: '4px 8px', fontSize: '12px', background: 'transparent', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer', color: '#4b5563' }}
+            >
+                Editar
+            </button>
+            {/* Don't show "Ver como" for the currently logged-in admin */}
+            {u.id !== currentUser?.id && (
+                <button
+                    onClick={() => handleImpersonate(u)}
+                    title={`Ver como ${u.username}`}
+                    style={{
+                        display: 'flex', alignItems: 'center', gap: '4px',
+                        padding: '4px 10px', fontSize: '12px',
+                        background: '#eff6ff', border: '1px solid #bfdbfe',
+                        borderRadius: '4px', cursor: 'pointer', color: '#2563eb',
+                        fontWeight: '500',
+                    }}
+                >
+                    <Eye size={13} /> Ver como
+                </button>
+            )}
+        </div>
+    );
 
     return (
         <div style={{ padding: '20px' }}>
@@ -107,35 +142,27 @@ const UsersView = () => {
             </div>
 
             {isMobile ? (
-                // MOBILE CARD VIEW
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {users.map(user => (
-                        <div key={user.id} style={{ padding: '15px', background: 'white', borderRadius: '8px', border: '1px solid #eee', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    {users.map(u => (
+                        <div key={u.id} style={{ padding: '15px', background: 'white', borderRadius: '8px', border: '1px solid #eee', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                <span style={{ fontWeight: 'bold', fontSize: '14px', color: '#333' }}>{user.username}</span>
+                                <span style={{ fontWeight: 'bold', fontSize: '14px', color: '#333' }}>{u.username}</span>
                                 <span style={{
                                     fontSize: '11px',
-                                    color: '#666',
-                                    background: user.role === 'admin' ? '#dbeafe' : '#f3f4f6',
-                                    color: user.role === 'admin' ? '#1e40af' : '#374151',
+                                    background: u.role === 'admin' ? '#dbeafe' : '#f3f4f6',
+                                    color: u.role === 'admin' ? '#1e40af' : '#374151',
                                     padding: '2px 6px',
                                     borderRadius: '4px',
                                     width: 'fit-content'
                                 }}>
-                                    {user.role}
+                                    {u.role}
                                 </span>
                             </div>
-                            <button
-                                onClick={() => handleEdit(user)}
-                                style={{ padding: '6px 12px', fontSize: '12px', background: 'white', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer', color: '#4b5563' }}
-                            >
-                                Editar
-                            </button>
+                            {renderActions(u)}
                         </div>
                     ))}
                 </div>
             ) : (
-                // DESKTOP TABLE VIEW
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                         <tr style={{ background: '#e5e7eb', textAlign: 'left' }}>
@@ -146,28 +173,23 @@ const UsersView = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {users.map(user => (
-                            <tr key={user.id} style={{ borderBottom: '1px solid #eee' }}>
-                                <td style={{ padding: '10px' }}>{user.id}</td>
-                                <td style={{ padding: '10px' }}>{user.username}</td>
+                        {users.map(u => (
+                            <tr key={u.id} style={{ borderBottom: '1px solid #eee' }}>
+                                <td style={{ padding: '10px' }}>{u.id}</td>
+                                <td style={{ padding: '10px', fontWeight: '500' }}>{u.username}</td>
                                 <td style={{ padding: '10px' }}>
                                     <span style={{
                                         padding: '2px 8px',
                                         borderRadius: '12px',
-                                        background: user.role === 'admin' ? '#dbeafe' : '#f3f4f6',
-                                        color: user.role === 'admin' ? '#1e40af' : '#374151',
+                                        background: u.role === 'admin' ? '#dbeafe' : '#f3f4f6',
+                                        color: u.role === 'admin' ? '#1e40af' : '#374151',
                                         fontSize: '0.85rem'
                                     }}>
-                                        {user.role}
+                                        {u.role}
                                     </span>
                                 </td>
                                 <td style={{ padding: '10px' }}>
-                                    <button
-                                        onClick={() => handleEdit(user)}
-                                        style={{ padding: '4px 8px', fontSize: '12px', background: 'transparent', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer', color: '#4b5563' }}
-                                    >
-                                        Editar
-                                    </button>
+                                    {renderActions(u)}
                                 </td>
                             </tr>
                         ))}

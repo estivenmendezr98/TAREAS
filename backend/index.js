@@ -339,6 +339,29 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
     }
 });
 
+// Admin: Impersonate a user — issues a valid token for the target user (no password needed)
+app.post('/api/admin/impersonate/:userId', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Solo administradores' });
+    try {
+        const result = await pool.query(
+            'SELECT id, username, role FROM users WHERE id = $1',
+            [req.params.userId]
+        );
+        if (!result.rows.length) return res.status(404).json({ error: 'Usuario no encontrado' });
+        const targetUser = result.rows[0];
+        const token = jwt.sign(
+            { id: targetUser.id, username: targetUser.username, role: targetUser.role },
+            JWT_SECRET,
+            { expiresIn: '8h' }
+        );
+        res.json({ token, user: targetUser });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error al impersonar usuario' });
+    }
+});
+
+
 // Routes
 
 // Get all active projects for the logged-in user

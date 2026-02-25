@@ -16,7 +16,7 @@ import { Tag, ChevronDown, ChevronRight, FileText } from 'lucide-react';
 import './index.css';
 
 function AppContent() {
-  const { isAuthenticated, logout: authLogout, user, token } = useAuth();
+  const { isAuthenticated, logout: authLogout, user, token, impersonating, stopImpersonating } = useAuth();
   const [projects, setProjects] = useState([]);
   const [categories, setCategories] = useState([]); // New state for categories
   const [expandedCategories, setExpandedCategories] = useState({}); // Track expanded/collapsed state
@@ -225,6 +225,10 @@ function AppContent() {
     return false;
   });
 
+  const handleImpersonate = () => {
+    setViewMode('active');
+  };
+
   const handleLogout = () => {
     setProjects([]); // Clear projects on logout
     setDeletedData({ projects: [], tasks: [] }); // Clear deleted items
@@ -244,6 +248,31 @@ function AppContent() {
           <button onClick={handleLogout} style={{ padding: '5px 10px', fontSize: '12px', cursor: 'pointer', background: '#e5e7eb', border: '1px solid #ccc', borderRadius: '4px' }}>Cerrar Sesión</button>
         </div>
       </header>
+
+      {/* Impersonation banner */}
+      {impersonating && (
+        <div style={{
+          position: 'sticky', top: 0, zIndex: 1000,
+          background: 'linear-gradient(90deg, #f59e0b, #d97706)',
+          color: 'white', padding: '10px 20px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.2)', fontSize: '14px',
+        }}>
+          <span>
+            ⚠️&nbsp; Estás viendo la cuenta de&nbsp;<strong>{user?.username}</strong>&nbsp;como administrador.
+          </span>
+          <button
+            onClick={() => { stopImpersonating(); setViewMode('active'); }}
+            style={{
+              background: 'white', color: '#d97706', border: 'none',
+              borderRadius: '6px', padding: '6px 14px', fontWeight: '700',
+              cursor: 'pointer', fontSize: '13px',
+            }}
+          >
+            ← Volver a mi cuenta
+          </button>
+        </div>
+      )}
 
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', gap: '1rem' }}>
         <button
@@ -486,7 +515,7 @@ function AppContent() {
 
         {viewMode === 'users' && user?.role === 'admin' && (
           <div style={{ flex: 1, overflow: 'auto' }}>
-            <UsersView />
+            <UsersView onImpersonate={handleImpersonate} />
           </div>
         )}
       </div>

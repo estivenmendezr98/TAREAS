@@ -8,11 +8,15 @@ export const AuthProvider = ({ children }) => {
     const [token, setToken] = useState(localStorage.getItem('token'));
     const [loading, setLoading] = useState(true);
 
+    // Impersonation state: holds { token, user } of the real admin while viewing as another user
+    const [impersonating, setImpersonating] = useState(() => {
+        const saved = localStorage.getItem('impersonating');
+        return saved ? JSON.parse(saved) : null;
+    });
+
     useEffect(() => {
-        // Check if token exists on load
         const storedToken = localStorage.getItem('token');
         const storedUser = localStorage.getItem('user');
-
         if (storedToken && storedUser) {
             setToken(storedToken);
             setUser(JSON.parse(storedUser));
@@ -20,11 +24,9 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
     }, []);
 
-    // Wrap in useCallback to ensure stability
     const login = useCallback(async (username, password) => {
         try {
             const response = await axios.post('http://localhost:3000/api/login', { username, password });
-
             if (response.data.success) {
                 const { token, user } = response.data;
                 setToken(token);
@@ -43,9 +45,51 @@ export const AuthProvider = ({ children }) => {
     const logout = useCallback(() => {
         setUser(null);
         setToken(null);
+        setImpersonating(null);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        localStorage.removeItem('impersonating');
     }, []);
+
+    // Impersonate: admin clicks "Ver como" on a user
+    const impersonate = useCallback(async (targetUserId) => {
+        try {
+            const response = await axios.post(
+                `http://localhost:3000/api/admin/impersonate/${targetUserId}`,
+                {},
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            const { token: newToken, user: targetUser } = response.data;
+
+            // Save admin's current session to restore later
+            const adminSession = { token, user };
+            setImpersonating(adminSession);
+            localStorage.setItem('impersonating', JSON.stringify(adminSession));
+
+            // Activate target user's token
+            setToken(newToken);
+            setUser(targetUser);
+            localStorage.setItem('token', newToken);
+            localStorage.setItem('user', JSON.stringify(targetUser));
+
+            return { success: true };
+        } catch (error) {
+            console.error('Impersonation error:', error);
+            return { success: false };
+        }
+    }, [token, user]);
+
+    // Stop impersonating: restore admin session
+    const stopImpersonating = useCallback(() => {
+        if (!impersonating) return;
+        const { token: adminToken, user: adminUser } = impersonating;
+        setToken(adminToken);
+        setUser(adminUser);
+        localStorage.setItem('token', adminToken);
+        localStorage.setItem('user', JSON.stringify(adminUser));
+        setImpersonating(null);
+        localStorage.removeItem('impersonating');
+    }, [impersonating]);
 
     // Update Axios header whenever token changes
     useEffect(() => {
@@ -56,13 +100,12 @@ export const AuthProvider = ({ children }) => {
         }
     }, [token]);
 
-    // Axios interceptor to handle 401/403 responses (token expired/invalid)
+    // Axios interceptor for expired tokens
     useEffect(() => {
         const interceptor = axios.interceptors.response.use(
             (response) => response,
             (error) => {
                 if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-                    // Only logout if we are currently authenticated to avoid loops
                     if (token) {
                         console.warn('Session expired or invalid. Logging out.');
                         logout();
@@ -71,12 +114,18 @@ export const AuthProvider = ({ children }) => {
                 return Promise.reject(error);
             }
         );
-
         return () => axios.interceptors.response.eject(interceptor);
     }, [logout, token]);
 
     return (
-        <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated: !!token, loading }}>
+        <AuthContext.Provider value={{
+            user, token, login, logout,
+            isAuthenticated: !!token,
+            loading,
+            impersonating,
+            impersonate,
+            stopImpersonating,
+        }}>
             {!loading && children}
         </AuthContext.Provider>
     );
