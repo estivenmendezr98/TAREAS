@@ -113,13 +113,16 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
                         img.crossOrigin = 'anonymous';
                         img.onload = () => { if (++loaded === imgs.length) onAllLoaded(); };
                         img.onerror = () => reject(new Error(`No se pudo cargar imagen ${i + 1}`));
-                        img.src = `http://localhost:3000/${toCopy[i].file_path}`;
+                        // Cache-busting: force reload with CORS headers (avoids tainted canvas from cached non-CORS response)
+                        img.src = `http://localhost:3000/${toCopy[i].file_path}?t=${Date.now()}`;
                     });
                 });
 
                 try {
+                    // Resolve the blob first (more compatible than passing the Promise)
+                    const blob = await combinedPngBlob;
                     await navigator.clipboard.write([
-                        new ClipboardItem({ 'image/png': combinedPngBlob })
+                        new ClipboardItem({ 'image/png': blob })
                     ]);
                     addToast(
                         toCopy.length === 1
@@ -129,7 +132,11 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
                     );
                 } catch (err) {
                     console.error('Clipboard error:', err.name, err.message);
-                    addToast(`Error al copiar: ${err.message}`, 'error');
+                    if (err.name === 'NotAllowedError') {
+                        addToast('El navegador boqueó el acceso al portapapeles. Haz clic en la página primero.', 'error');
+                    } else {
+                        addToast(`Error al copiar: ${err.message}`, 'error');
+                    }
                 }
             }
             // Escape clears selection
