@@ -139,6 +139,21 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
                     );
                 }
 
+                // Guard: clipboard API requires HTTPS or localhost
+                if (!navigator.clipboard || !window.ClipboardItem) {
+                    // Fallback: trigger a download of the image(s) instead
+                    const url = URL.createObjectURL(pngBlob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = toCopy.length === 1 ? 'imagen_evidencia.png' : 'imagenes_evidencia.png';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    addToast('Portapapeles no disponible — imagen descargada en su lugar', 'info');
+                    return;
+                }
+
+                // Focus the window to ensure clipboard permission is granted
+                window.focus();
                 await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
                 addToast(
                     toCopy.length === 1
