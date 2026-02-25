@@ -78,75 +78,88 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
     // Ctrl+C → copy selected images to clipboard as PNG
     useEffect(() => {
         const handleKeyDown = async (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedImages.size > 0) {
-                e.preventDefault();
-                const toCopy = orderedEvidence.filter(ev => selectedImages.has(ev.id));
-
-                // The Clipboard API only supports ONE ClipboardItem at a time.
-                // To copy multiple images, we composite them into a single canvas
-                // (stacked vertically with a small gap) and write one PNG blob.
-                const combinedPngBlob = new Promise((resolve, reject) => {
-                    let loaded = 0;
-                    const imgs = toCopy.map(() => new Image());
-                    const GAP = toCopy.length > 1 ? 16 : 0; // px gap between images
-
-                    const onAllLoaded = () => {
-                        const maxW = Math.max(...imgs.map(i => i.naturalWidth));
-                        const totalH = imgs.reduce((sum, i) => sum + i.naturalHeight, 0) + GAP * (imgs.length - 1);
-                        const canvas = document.createElement('canvas');
-                        canvas.width = maxW;
-                        canvas.height = totalH;
-                        const ctx = canvas.getContext('2d');
-                        ctx.fillStyle = '#ffffff';
-                        ctx.fillRect(0, 0, maxW, totalH);
-                        let y = 0;
-                        imgs.forEach(img => {
-                            // Center each image horizontally
-                            const x = Math.floor((maxW - img.naturalWidth) / 2);
-                            ctx.drawImage(img, x, y);
-                            y += img.naturalHeight + GAP;
-                        });
-                        canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('toBlob failed')), 'image/png');
-                    };
-
-                    imgs.forEach((img, i) => {
-                        img.crossOrigin = 'anonymous';
-                        img.onload = () => { if (++loaded === imgs.length) onAllLoaded(); };
-                        img.onerror = () => reject(new Error(`No se pudo cargar imagen ${i + 1}`));
-                        // Cache-busting: force reload with CORS headers (avoids tainted canvas from cached non-CORS response)
-                        img.src = `http://localhost:3000/${toCopy[i].file_path}?t=${Date.now()}`;
-                    });
-                });
-
-                try {
-                    // Resolve the blob first (more compatible than passing the Promise)
-                    const blob = await combinedPngBlob;
-                    await navigator.clipboard.write([
-                        new ClipboardItem({ 'image/png': blob })
-                    ]);
-                    addToast(
-                        toCopy.length === 1
-                            ? 'Imagen copiada al portapapeles'
-                            : `${toCopy.length} imágenes copiadas al portapapeles (combinadas)`,
-                        'success'
-                    );
-                } catch (err) {
-                    console.error('Clipboard error:', err.name, err.message);
-                    if (err.name === 'NotAllowedError') {
-                        addToast('El navegador boqueó el acceso al portapapeles. Haz clic en la página primero.', 'error');
-                    } else {
-                        addToast(`Error al copiar: ${err.message}`, 'error');
-                    }
-                }
-            }
             // Escape clears selection
             if (e.key === 'Escape') {
                 setSelectedImages(new Set());
+                return;
+            }
+
+            if (!((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedImages.size > 0)) return;
+            e.preventDefault();
+
+            const toCopy = orderedEvidence.filter(ev => selectedImages.has(ev.id));
+            if (toCopy.length === 0) return;
+
+            try {
+                // Step 1: download all images as blobs via fetch (avoids canvas taint / CORS cache issues)
+                const blobs = await Promise.all(
+                    toCopy.map(ev =>
+                        fetch(`http://localhost:3000/${ev.file_path}`, { cache: 'no-store' })
+                            .then(r => {
+                                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                                return r.blob();
+                            })
+                    )
+                );
+
+                let pngBlob;
+
+                if (blobs.length === 1) {
+                    // Single image: convert to PNG via canvas
+                    const bitmap = await createImageBitmap(blobs[0]);
+                    const canvas = document.createElement('canvas');
+                    canvas.width = bitmap.width;
+                    canvas.height = bitmap.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(bitmap, 0, 0);
+                    bitmap.close();
+                    pngBlob = await new Promise((res, rej) =>
+                        canvas.toBlob(b => b ? res(b) : rej(new Error('toBlob failed')), 'image/png')
+                    );
+                } else {
+                    // Multiple images: composite vertically on a single canvas
+                    const bitmaps = await Promise.all(blobs.map(b => createImageBitmap(b)));
+                    const GAP = 16;
+                    const maxW = Math.max(...bitmaps.map(b => b.width));
+                    const totalH = bitmaps.reduce((s, b) => s + b.height, 0) + GAP * (bitmaps.length - 1);
+                    const canvas = document.createElement('canvas');
+                    canvas.width = maxW;
+                    canvas.height = totalH;
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, maxW, totalH);
+                    let y = 0;
+                    bitmaps.forEach(bm => {
+                        ctx.drawImage(bm, Math.floor((maxW - bm.width) / 2), y);
+                        y += bm.height + GAP;
+                        bm.close();
+                    });
+                    pngBlob = await new Promise((res, rej) =>
+                        canvas.toBlob(b => b ? res(b) : rej(new Error('toBlob failed')), 'image/png')
+                    );
+                }
+
+                await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+                addToast(
+                    toCopy.length === 1
+                        ? 'Imagen copiada al portapapeles ✓'
+                        : `${toCopy.length} imágenes copiadas al portapapeles (combinadas) ✓`,
+                    'success'
+                );
+            } catch (err) {
+                console.error('Clipboard error:', err.name, err.message);
+                if (err.name === 'NotAllowedError') {
+                    addToast('El navegador bloqueó el portapapeles. Haz clic en la página e intenta de nuevo.', 'error');
+                } else {
+                    addToast(`Error al copiar imagen: ${err.message}`, 'error');
+                }
             }
         };
+
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [selectedImages, orderedEvidence, addToast]);
+
 
     const [showAiMenu, setShowAiMenu] = useState(false);
 
