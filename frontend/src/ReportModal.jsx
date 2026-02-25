@@ -78,95 +78,73 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
     // Ctrl+C → copy selected images to clipboard as PNG
     useEffect(() => {
         const handleKeyDown = async (e) => {
-            // Escape clears selection
             if (e.key === 'Escape') {
                 setSelectedImages(new Set());
                 return;
             }
-
             if (!((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedImages.size > 0)) return;
             e.preventDefault();
 
             const toCopy = orderedEvidence.filter(ev => selectedImages.has(ev.id));
             if (toCopy.length === 0) return;
 
-            try {
-                // Step 1: download all images as blobs via fetch (avoids canvas taint / CORS cache issues)
+            // --- Check availability synchronously (BEFORE any await) ---
+            if (!navigator.clipboard?.write || !window.ClipboardItem) {
+                addToast('Tu navegador no soporta copiar imágenes al portapapeles. Abre la app en http://localhost:5173', 'error');
+                return;
+            }
+
+            // Build the blob asynchronously INSIDE a function passed to ClipboardItem.
+            // This lets the browser call clipboard.write() within the user gesture
+            // while deferring the async image work internally — no "gesture expired" error.
+            const buildBlob = async () => {
                 const blobs = await Promise.all(
                     toCopy.map(ev =>
                         fetch(`http://localhost:3000/${ev.file_path}`, { cache: 'no-store' })
-                            .then(r => {
-                                if (!r.ok) throw new Error(`HTTP ${r.status}`);
-                                return r.blob();
-                            })
+                            .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.blob(); })
                     )
                 );
 
-                let pngBlob;
-
                 if (blobs.length === 1) {
-                    // Single image: convert to PNG via canvas
-                    const bitmap = await createImageBitmap(blobs[0]);
-                    const canvas = document.createElement('canvas');
-                    canvas.width = bitmap.width;
-                    canvas.height = bitmap.height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(bitmap, 0, 0);
-                    bitmap.close();
-                    pngBlob = await new Promise((res, rej) =>
-                        canvas.toBlob(b => b ? res(b) : rej(new Error('toBlob failed')), 'image/png')
-                    );
-                } else {
-                    // Multiple images: composite vertically on a single canvas
-                    const bitmaps = await Promise.all(blobs.map(b => createImageBitmap(b)));
-                    const GAP = 16;
-                    const maxW = Math.max(...bitmaps.map(b => b.width));
-                    const totalH = bitmaps.reduce((s, b) => s + b.height, 0) + GAP * (bitmaps.length - 1);
-                    const canvas = document.createElement('canvas');
-                    canvas.width = maxW;
-                    canvas.height = totalH;
-                    const ctx = canvas.getContext('2d');
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(0, 0, maxW, totalH);
-                    let y = 0;
-                    bitmaps.forEach(bm => {
-                        ctx.drawImage(bm, Math.floor((maxW - bm.width) / 2), y);
-                        y += bm.height + GAP;
-                        bm.close();
-                    });
-                    pngBlob = await new Promise((res, rej) =>
-                        canvas.toBlob(b => b ? res(b) : rej(new Error('toBlob failed')), 'image/png')
-                    );
+                    const bm = await createImageBitmap(blobs[0]);
+                    const c = document.createElement('canvas');
+                    c.width = bm.width; c.height = bm.height;
+                    c.getContext('2d').drawImage(bm, 0, 0);
+                    bm.close();
+                    return new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('toBlob failed')), 'image/png'));
                 }
 
-                // Guard: clipboard API requires HTTPS or localhost
-                if (!navigator.clipboard || !window.ClipboardItem) {
-                    // Fallback: trigger a download of the image(s) instead
-                    const url = URL.createObjectURL(pngBlob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = toCopy.length === 1 ? 'imagen_evidencia.png' : 'imagenes_evidencia.png';
-                    a.click();
-                    URL.revokeObjectURL(url);
-                    addToast('Portapapeles no disponible — imagen descargada en su lugar', 'info');
-                    return;
-                }
+                const bitmaps = await Promise.all(blobs.map(b => createImageBitmap(b)));
+                const GAP = 16;
+                const maxW = Math.max(...bitmaps.map(b => b.width));
+                const totalH = bitmaps.reduce((s, b) => s + b.height, 0) + GAP * (bitmaps.length - 1);
+                const c = document.createElement('canvas');
+                c.width = maxW; c.height = totalH;
+                const ctx = c.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, maxW, totalH);
+                let y = 0;
+                bitmaps.forEach(bm => { ctx.drawImage(bm, Math.floor((maxW - bm.width) / 2), y); y += bm.height + GAP; bm.close(); });
+                return new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('toBlob failed')), 'image/png'));
+            };
 
-                // Focus the window to ensure clipboard permission is granted
-                window.focus();
-                await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+            try {
+                // Call write() IMMEDIATELY with a Promise — preserves user gesture context
+                await navigator.clipboard.write([
+                    new ClipboardItem({ 'image/png': buildBlob() })
+                ]);
                 addToast(
                     toCopy.length === 1
                         ? 'Imagen copiada al portapapeles ✓'
-                        : `${toCopy.length} imágenes copiadas al portapapeles (combinadas) ✓`,
+                        : `${toCopy.length} imágenes copiadas al portapapeles ✓`,
                     'success'
                 );
             } catch (err) {
                 console.error('Clipboard error:', err.name, err.message);
                 if (err.name === 'NotAllowedError') {
-                    addToast('El navegador bloqueó el portapapeles. Haz clic en la página e intenta de nuevo.', 'error');
+                    addToast('Permiso denegado. Haz clic en la página e intenta de nuevo.', 'error');
                 } else {
-                    addToast(`Error al copiar imagen: ${err.message}`, 'error');
+                    addToast(`Error al copiar: ${err.message}`, 'error');
                 }
             }
         };
@@ -174,6 +152,7 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [selectedImages, orderedEvidence, addToast]);
+
 
 
     const [showAiMenu, setShowAiMenu] = useState(false);
