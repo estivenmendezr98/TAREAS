@@ -219,9 +219,15 @@ function AppContent() {
     }));
   };
 
-  const displayedProjects = projects.filter(p => {
+  const displayedProjects = projects.map(p => {
+    if (viewMode === 'delivered') {
+      return { ...p, tasks: p.tasks.filter(t => t.entregado) };
+    }
+    return p;
+  }).filter(p => {
     if (viewMode === 'archived') return p.is_archived;
     if (viewMode === 'active') return !p.is_archived;
+    if (viewMode === 'delivered') return p.tasks.length > 0;
     return false;
   });
 
@@ -349,6 +355,16 @@ function AppContent() {
           onClick={() => setViewMode('archived')}
         >
           Archivados
+        </button>
+        <button
+          className={`view-toggle-btn ${viewMode === 'delivered' ? 'active' : ''}`}
+          onClick={() => setViewMode('delivered')}
+          style={{
+            backgroundColor: viewMode === 'delivered' ? '#d1fae5' : 'transparent',
+            color: viewMode === 'delivered' ? '#059669' : '#6b7280'
+          }}
+        >
+          Entregados
         </button>
         <button
           className={`view-toggle-btn ${viewMode === 'deleted' ? 'active' : ''}`}
@@ -500,6 +516,22 @@ function AppContent() {
             ))}
             {displayedProjects.length === 0 && (
               <p className="no-projects">No hay proyectos archivados.</p>
+            )}
+          </div>
+        )}
+
+        {viewMode === 'delivered' && (
+          <div className="projects-list">
+            {displayedProjects.map(project => (
+              <ProjectItem
+                key={project.id}
+                project={project}
+                categories={categories}
+                onUpdate={fetchProjects}
+              />
+            ))}
+            {displayedProjects.length === 0 && (
+              <p className="no-projects">No hay tareas entregadas actualmente.</p>
             )}
           </div>
         )}
