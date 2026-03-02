@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { X, FileText, Square, ChevronDown, ChevronRight, Download, CheckCircle } from 'lucide-react';
+import { X, FileText, Square, ChevronDown, ChevronRight, Download, CheckCircle, Clock, Archive } from 'lucide-react';
 import { generateDocx } from '../exportUtils';
 import { useToast } from '../context/ToastContext';
 
@@ -174,7 +174,7 @@ const MultiProjectReportModal = ({ isOpen, onClose, projects }) => {
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        {projects.filter(p => !p.is_archived).map(project => {
+                        {projects.map(project => {
                             const activeTasks = project.tasks.filter(t => !t.deleted_at);
                             if (activeTasks.length === 0) return null;
 
@@ -197,7 +197,15 @@ const MultiProjectReportModal = ({ isOpen, onClose, projects }) => {
                                                 : <Square size={20} color="#9ca3af" />
                                             }
                                         </div>
-                                        <span style={{ flex: 1, fontWeight: 600, color: '#374151' }}>{project.title}</span>
+                                        <span style={{ flex: 1, fontWeight: 600, color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            {project.title}
+                                            {project.is_archived && (
+                                                <span style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderRadius: '4px', background: '#fef3c7', color: '#92400e', fontSize: '0.7rem', fontWeight: 600 }}>
+                                                    <Archive size={12} style={{ marginRight: '4px' }} />
+                                                    Archivado{project.updated_at ? ` el ${new Date(project.updated_at).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}` : ''}
+                                                </span>
+                                            )}
+                                        </span>
                                         <span style={{ fontSize: '0.85rem', color: '#6b7280', marginRight: '10px' }}>{activeTasks.length} tareas</span>
                                         {isExpanded ? <ChevronDown size={18} color="#9ca3af" /> : <ChevronRight size={18} color="#9ca3af" />}
                                     </div>
@@ -238,7 +246,19 @@ const MultiProjectReportModal = ({ isOpen, onClose, projects }) => {
                                                                 {task.descripcion}
                                                             </span>
 
-                                                            <div style={{ display: 'flex', gap: '4px' }}>
+                                                            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                                                                {task.is_archived && (
+                                                                    <span style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderRadius: '4px', background: '#fee2e2', color: '#991b1b', fontSize: '0.75rem', fontWeight: 500 }}>
+                                                                        <Archive size={12} style={{ marginRight: '4px' }} />
+                                                                        Archivada{task.updated_at ? ` el ${new Date(task.updated_at).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}` : ''}
+                                                                    </span>
+                                                                )}
+                                                                {task.updated_at && (
+                                                                    <span style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderRadius: '4px', background: '#f3f4f6', color: '#4b5563', fontSize: '0.75rem', fontWeight: 500 }}>
+                                                                        <Clock size={12} style={{ marginRight: '4px' }} />
+                                                                        {new Date(task.updated_at).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}
+                                                                    </span>
+                                                                )}
                                                                 {task.completada && (
                                                                     <span style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderRadius: '4px', background: '#d1fae5', color: '#059669', fontSize: '0.75rem', fontWeight: 500 }}>
                                                                         <CheckCircle size={12} style={{ marginRight: '4px' }} /> Resuelta

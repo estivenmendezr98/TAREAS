@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
-import { Download, ChevronLeft, ChevronRight, FileSpreadsheet, FileIcon } from 'lucide-react';
+import { Download, ChevronLeft, ChevronRight, FileSpreadsheet, FileIcon, Archive } from 'lucide-react';
+import SelectArchivedModal from './SelectArchivedModal';
 
 // --- ESTILOS OPTIMIZADOS (BALANCED SIZE) ---
 // --- ESTILOS OPTIMIZADOS (DYNAMIC) ---
@@ -107,6 +108,8 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
     const [selectedMonth, setSelectedMonth] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
     const [viewScale, setViewScale] = useState('day'); // 'day' | 'week'
     const [groupingMode, setGroupingMode] = useState('project'); // 'project' | 'week'
+    const [selectedArchivedIds, setSelectedArchivedIds] = useState(new Set());
+    const [isArchivedModalOpen, setIsArchivedModalOpen] = useState(false);
 
     // Responsive Logic
     const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
@@ -137,11 +140,13 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
     // 1. DATA NORMALIZER
     const { groupedTasks, flatTasks } = useMemo(() => {
         if (!Array.isArray(tasks)) return { normalizedTasks: [], groupedTasks: {}, flatTasks: [] };
-        const validTasks = tasks.map(t => ({
-            ...t,
-            _start: parseLocalDate(t.start_date || t.startDate || t.fecha_inicio),
-            _end: parseLocalDate(t.fecha_objetivo || t.endDate || t.fecha_fin)
-        }));
+        const validTasks = tasks
+            .filter(t => !t.is_archived || selectedArchivedIds.has(t.id)) // Mostrar solo archivadas seleccionadas
+            .map(t => ({
+                ...t,
+                _start: parseLocalDate(t.start_date || t.startDate || t.fecha_inicio),
+                _end: parseLocalDate(t.fecha_objetivo || t.endDate || t.fecha_fin)
+            }));
 
         let groups = {};
 
@@ -174,7 +179,7 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
         }
 
         return { normalizedTasks: validTasks, groupedTasks: groups, flatTasks: validTasks };
-    }, [tasks, groupingMode]);
+    }, [tasks, groupingMode, selectedArchivedIds]);
 
     // 2. GRID GENERATION (Scoped to Selected Month)
     const { columns, months, totalWidth, monthStart, monthEnd } = useMemo(() => {
@@ -573,8 +578,17 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
         };
     }, [dragState, tasks, onTaskUpdate, viewScale, columnWidth]);
 
+    const archivedTasks = useMemo(() => tasks.filter(t => t.is_archived), [tasks]);
+
     return (
         <div style={styles.container} ref={containerRef}>
+            <SelectArchivedModal
+                isOpen={isArchivedModalOpen}
+                onClose={() => setIsArchivedModalOpen(false)}
+                archivedTasks={archivedTasks}
+                selectedIds={selectedArchivedIds}
+                onSelectionChange={setSelectedArchivedIds}
+            />
             <div style={styles.controlBar}>
                 {/* Navigation & Month */}
                 {/* Navigation & Month */}
@@ -600,6 +614,22 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
                         <option value="project">Por Proyecto</option>
                         <option value="week">Por Semana</option>
                     </select>
+
+                    <button
+                        onClick={() => setIsArchivedModalOpen(true)}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '5px',
+                            padding: '4px 10px', fontSize: '12px', borderRadius: '4px',
+                            border: `1px solid ${selectedArchivedIds.size > 0 ? '#f59e0b' : '#ccc'}`,
+                            backgroundColor: selectedArchivedIds.size > 0 ? '#fef3c7' : 'white',
+                            color: selectedArchivedIds.size > 0 ? '#92400e' : '#333',
+                            cursor: 'pointer', fontWeight: selectedArchivedIds.size > 0 ? 'bold' : 'normal'
+                        }}
+                        title="Seleccionar tareas archivadas a mostrar"
+                    >
+                        <Archive size={14} />
+                        {selectedArchivedIds.size > 0 ? `Archivadas (${selectedArchivedIds.size})` : 'Seleccionar Archivadas'}
+                    </button>
                 </div>
 
                 {/* Export Tools */}
