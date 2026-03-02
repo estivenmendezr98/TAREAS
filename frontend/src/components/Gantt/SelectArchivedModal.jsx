@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, CheckCircle, Square, Archive, Clock } from 'lucide-react';
+import { X, CheckCircle, Square, Archive, Clock, Send } from 'lucide-react';
 
 const SelectArchivedModal = ({ isOpen, onClose, archivedTasks, selectedIds, onSelectionChange }) => {
     const [localSelected, setLocalSelected] = useState(new Set());
@@ -88,6 +88,11 @@ const SelectArchivedModal = ({ isOpen, onClose, archivedTasks, selectedIds, onSe
                                                             {task.completada && (
                                                                 <span style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderRadius: '4px', background: '#d1fae5', color: '#059669', fontSize: '0.75rem', fontWeight: 500 }}>
                                                                     <CheckCircle size={12} style={{ marginRight: '4px' }} /> Resuelta
+                                                                </span>
+                                                            )}
+                                                            {task.entregado && (
+                                                                <span style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderRadius: '4px', background: '#d1fae5', color: '#059669', fontSize: '0.75rem', fontWeight: 500 }}>
+                                                                    <Send size={12} style={{ marginRight: '4px' }} /> Entregado
                                                                 </span>
                                                             )}
                                                         </div>

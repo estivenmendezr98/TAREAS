@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import PropTypes from 'prop-types';
-import { Check, Calendar, Clock, Trash2, Edit2, Save, X, ClipboardList, Paperclip, Archive, RefreshCw, FileText } from 'lucide-react';
+import { Check, Calendar, Clock, Trash2, Edit2, Save, X, ClipboardList, Paperclip, Archive, RefreshCw, FileText, Send } from 'lucide-react';
 import ReportModal from './ReportModal';
 import ConfirmationModal from './components/ConfirmationModal';
 import { useToast } from './context/ToastContext';
@@ -27,6 +27,19 @@ const TaskList = ({ tasks, onTaskUpdated, selectionMode, selectedIds, onToggleSe
         } catch (error) {
             console.error('Error updating task:', error);
             addToast('Error al actualizar estado', 'error');
+        }
+    };
+
+    const handleToggleEntregado = async (task) => {
+        try {
+            await axios.put(`http://localhost:3000/api/tasks/${task.id}`, {
+                entregado: !task.entregado
+            });
+            onTaskUpdated();
+            addToast(task.entregado ? 'Marca de entregado removida' : 'Tarea marcada como entregada', 'success');
+        } catch (error) {
+            console.error('Error updating task delivery status:', error);
+            addToast('Error al actualizar estado de entrega', 'error');
         }
     };
 
@@ -125,7 +138,7 @@ const TaskList = ({ tasks, onTaskUpdated, selectionMode, selectedIds, onToggleSe
         <>
             <ul className={`task-list ${selectionMode ? 'selection-active' : ''}`}>
                 {tasks.map((task) => (
-                    <li key={task.id} className={`task-item-container ${task.completada ? 'completed' : ''}`}>
+                    <li key={task.id} className={`task-item-container ${task.completada ? 'completed' : ''} ${task.entregado ? 'delivered' : ''}`} style={{ backgroundColor: task.entregado ? '#f0fdf4' : undefined }}>
                         <div className="task-main-row">
                             {selectionMode ? (
                                 <div className="selection-checkbox-container" onClick={() => onToggleSelect(task.id)}>
@@ -186,6 +199,16 @@ const TaskList = ({ tasks, onTaskUpdated, selectionMode, selectedIds, onToggleSe
                                                         {task.fecha_objetivo ? formatDate(task.fecha_objetivo) : ''}
                                                     </span>
                                                 )}
+                                                {task.entregado && (
+                                                    <span style={{
+                                                        display: 'flex', alignItems: 'center', padding: '2px 6px',
+                                                        borderRadius: '4px', background: '#d1fae5', color: '#059669',
+                                                        fontSize: '0.72rem', fontWeight: 600, gap: '4px', marginTop: '2px'
+                                                    }} title="Tarea entregada">
+                                                        <Send size={10} />
+                                                        Entregado
+                                                    </span>
+                                                )}
                                                 {task.updated_at && (
                                                     <span style={{
                                                         display: 'flex',
@@ -234,6 +257,15 @@ const TaskList = ({ tasks, onTaskUpdated, selectionMode, selectedIds, onToggleSe
                                                 style={{ color: task.is_archived ? '#10b981' : '#f59e0b' }}
                                             >
                                                 {task.is_archived ? <RefreshCw size={14} /> : <Archive size={14} />}
+                                            </button>
+
+                                            <button
+                                                onClick={() => handleToggleEntregado(task)}
+                                                className="action-btn"
+                                                title={task.entregado ? "Quitar marca de Entregado" : "Marcar como Entregado"}
+                                                style={{ color: task.entregado ? '#059669' : '#9ca3af', padding: '0.4rem', border: '1px solid transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px' }}
+                                            >
+                                                <Send size={15} />
                                             </button>
 
                                             <button onClick={() => setTaskToDelete(task.id)} className="action-btn delete-btn-sm" title="Eliminar">

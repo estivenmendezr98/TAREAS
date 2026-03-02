@@ -413,7 +413,7 @@ app.get('/api/projects', authenticateToken, async (req, res) => {
         // Fetch tasks (exclude deleted) for the user's projects
         const taskQuery = `
             SELECT 
-                t.id, t.project_id, t.descripcion, t.completada, t.fecha_creacion, t.report_content, t.is_archived,
+                t.id, t.project_id, t.descripcion, t.completada, t.fecha_creacion, t.report_content, t.is_archived, t.entregado,
                 TO_CHAR(t.start_date, 'YYYY-MM-DD') as start_date,
                 TO_CHAR(t.fecha_objetivo, 'YYYY-MM-DD') as fecha_objetivo,
                 t.updated_at
@@ -478,7 +478,7 @@ app.post('/api/tasks', authenticateToken, async (req, res) => {
         const result = await pool.query(
             `INSERT INTO tasks (descripcion, fecha_objetivo, project_id, start_date) 
              VALUES ($1, $2, $3, $4) 
-             RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content,
+             RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content, is_archived, entregado,
                        TO_CHAR(start_date, 'YYYY-MM-DD') as start_date, 
                        TO_CHAR(fecha_objetivo, 'YYYY-MM-DD') as fecha_objetivo`,
             [descripcion, fecha_objetivo, project_id, start_date || null]
@@ -493,28 +493,35 @@ app.post('/api/tasks', authenticateToken, async (req, res) => {
 // Update task (status, details, report, or archive)
 app.put('/api/tasks/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
-    const { completada, descripcion, fecha_objetivo, report_content, is_archived } = req.body;
+    const { completada, descripcion, fecha_objetivo, report_content, is_archived, entregado } = req.body;
 
     try {
         let result;
         if (completada !== undefined) {
             result = await pool.query(
                 `UPDATE tasks SET completada = $1, updated_at = NOW() WHERE id = $2
-                 RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content, is_archived, updated_at,
+                 RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content, is_archived, entregado, updated_at,
                            start_date::text as start_date, fecha_objetivo::text as fecha_objetivo`,
                 [completada, id]
+            );
+        } else if (entregado !== undefined) {
+            result = await pool.query(
+                `UPDATE tasks SET entregado = $1, updated_at = NOW() WHERE id = $2
+                 RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content, is_archived, entregado, updated_at,
+                           start_date::text as start_date, fecha_objetivo::text as fecha_objetivo`,
+                [entregado, id]
             );
         } else if (is_archived !== undefined) {
             result = await pool.query(
                 `UPDATE tasks SET is_archived = $1, updated_at = NOW() WHERE id = $2
-                 RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content, is_archived, updated_at,
+                 RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content, is_archived, entregado, updated_at,
                            start_date::text as start_date, fecha_objetivo::text as fecha_objetivo`,
                 [is_archived, id]
             );
         } else if (report_content !== undefined) {
             result = await pool.query(
                 `UPDATE tasks SET report_content = $1, updated_at = NOW() WHERE id = $2
-                 RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content, is_archived, updated_at,
+                 RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content, is_archived, entregado, updated_at,
                            start_date::text as start_date, fecha_objetivo::text as fecha_objetivo`,
                 [report_content, id]
             );
@@ -523,14 +530,14 @@ app.put('/api/tasks/:id', authenticateToken, async (req, res) => {
                 const { start_date } = req.body;
                 result = await pool.query(
                     `UPDATE tasks SET descripcion = $1, fecha_objetivo = $2, start_date = $3, updated_at = NOW() WHERE id = $4
-                     RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content, is_archived, updated_at,
+                     RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content, is_archived, entregado, updated_at,
                                start_date::text as start_date, fecha_objetivo::text as fecha_objetivo`,
                     [descripcion, fecha_objetivo, start_date, id]
                 );
             } else {
                 result = await pool.query(
                     `UPDATE tasks SET descripcion = $1, fecha_objetivo = $2, updated_at = NOW() WHERE id = $3
-                     RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content, is_archived, updated_at,
+                     RETURNING id, project_id, descripcion, completada, fecha_creacion, deleted_at, report_content, is_archived, entregado, updated_at,
                                start_date::text as start_date, fecha_objetivo::text as fecha_objetivo`,
                     [descripcion, fecha_objetivo, id]
                 );

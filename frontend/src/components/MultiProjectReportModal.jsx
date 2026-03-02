@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { X, FileText, Square, ChevronDown, ChevronRight, Download, CheckCircle, Clock, Archive } from 'lucide-react';
+import { X, FileText, Square, ChevronDown, ChevronRight, Download, CheckCircle, Clock, Archive, Send } from 'lucide-react';
 import { generateDocx } from '../exportUtils';
 import { useToast } from '../context/ToastContext';
 
@@ -262,6 +262,11 @@ const MultiProjectReportModal = ({ isOpen, onClose, projects }) => {
                                                                 {task.completada && (
                                                                     <span style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderRadius: '4px', background: '#d1fae5', color: '#059669', fontSize: '0.75rem', fontWeight: 500 }}>
                                                                         <CheckCircle size={12} style={{ marginRight: '4px' }} /> Resuelta
+                                                                    </span>
+                                                                )}
+                                                                {task.entregado && (
+                                                                    <span style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderRadius: '4px', background: '#d1fae5', color: '#059669', fontSize: '0.75rem', fontWeight: 500 }}>
+                                                                        <Send size={12} style={{ marginRight: '4px' }} /> Entregado
                                                                     </span>
                                                                 )}
                                                                 {(task.report_content || (task.evidence && task.evidence.length > 0)) && (
