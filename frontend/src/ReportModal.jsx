@@ -600,8 +600,8 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
                                                 bottom: '100%',
                                                 left: '0',
                                                 marginBottom: '0.5rem',
-                                                background: 'white',
-                                                border: '1px solid #e5e7eb',
+                                                background: 'var(--card-bg)',
+                                                border: '1px solid var(--border-color)',
                                                 borderRadius: '8px',
                                                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                                                 zIndex: 100,
@@ -610,33 +610,33 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
                                             }}>
                                                 <button
                                                     onClick={() => handleAiAction('fix_grammar')}
-                                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 16px', border: 'none', background: 'white', textAlign: 'left', cursor: 'pointer', fontSize: '0.9rem', color: '#374151' }}
-                                                    onMouseOver={(e) => e.target.style.background = '#f3f4f6'}
-                                                    onMouseOut={(e) => e.target.style.background = 'white'}
+                                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 16px', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-main)' }}
+                                                    onMouseOver={(e) => e.target.style.background = 'var(--header-bg)'}
+                                                    onMouseOut={(e) => e.target.style.background = 'transparent'}
                                                 >
                                                     <Check size={16} color="#10b981" /> Corregir Ortografía
                                                 </button>
                                                 <button
                                                     onClick={() => handleAiAction('restructure')}
-                                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 16px', border: 'none', background: 'white', textAlign: 'left', cursor: 'pointer', fontSize: '0.9rem', color: '#374151', borderTop: '1px solid #f3f4f6' }}
-                                                    onMouseOver={(e) => e.target.style.background = '#f3f4f6'}
-                                                    onMouseOut={(e) => e.target.style.background = 'white'}
+                                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 16px', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-main)', borderTop: '1px solid var(--border-color)' }}
+                                                    onMouseOver={(e) => e.target.style.background = 'var(--header-bg)'}
+                                                    onMouseOut={(e) => e.target.style.background = 'transparent'}
                                                 >
                                                     <FileText size={16} color="#6366f1" /> Reestructurar Texto
                                                 </button>
                                                 <button
                                                     onClick={() => handleAiAction('analyze_images')}
-                                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 16px', border: 'none', background: 'white', textAlign: 'left', cursor: 'pointer', fontSize: '0.9rem', color: '#374151', borderTop: '1px solid #f3f4f6' }}
-                                                    onMouseOver={(e) => e.target.style.background = '#f3f4f6'}
-                                                    onMouseOut={(e) => e.target.style.background = 'white'}
+                                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 16px', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-main)', borderTop: '1px solid var(--border-color)' }}
+                                                    onMouseOver={(e) => e.target.style.background = 'var(--header-bg)'}
+                                                    onMouseOut={(e) => e.target.style.background = 'transparent'}
                                                 >
                                                     <Camera size={16} color="#f59e0b" /> Analizar Imágenes
                                                 </button>
                                                 <button
                                                     onClick={() => { setShowAiMenu(false); setShowPromptInput(true); }}
-                                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 16px', border: 'none', background: 'white', textAlign: 'left', cursor: 'pointer', fontSize: '0.9rem', color: '#7c3aed', borderTop: '1px solid #f3f4f6', fontWeight: 'bold' }}
-                                                    onMouseOver={(e) => e.target.style.background = '#f3f4f6'}
-                                                    onMouseOut={(e) => e.target.style.background = 'white'}
+                                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 16px', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer', fontSize: '0.9rem', color: '#7c3aed', borderTop: '1px solid var(--border-color)', fontWeight: 'bold' }}
+                                                    onMouseOver={(e) => e.target.style.background = 'var(--header-bg)'}
+                                                    onMouseOut={(e) => e.target.style.background = 'transparent'}
                                                 >
                                                     <Sparkles size={16} color="#7c3aed" /> Generar con Prompt
                                                 </button>
@@ -658,11 +658,11 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
                             background: 'rgba(0,0,0,0.5)', zIndex: 1100,
                             display: 'flex', alignItems: 'center', justifyContent: 'center'
                         }}>
-                            <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '520px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
-                                <h3 style={{ marginTop: 0, color: '#1f2937', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <div style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '520px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+                                <h3 style={{ marginTop: 0, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                     <Sparkles size={20} color="#7c3aed" /> Generar Informe con IA
                                 </h3>
-                                <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1rem' }}>
                                     Describe el tema o contexto de la actividad. La IA generará el informe <strong>imagen por imagen</strong>, analizando con detalle qué se hace, qué materiales se usan y para qué.
                                 </p>
 
@@ -682,9 +682,9 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
                                 ) : (
                                     <div style={{
                                         display: 'flex', alignItems: 'center', gap: '0.5rem',
-                                        background: '#f9fafb', border: '1px solid #e5e7eb',
+                                        background: 'var(--header-bg)', border: '1px solid var(--border-color)',
                                         borderRadius: '8px', padding: '0.6rem 1rem',
-                                        marginBottom: '1rem', fontSize: '0.875rem', color: '#6b7280'
+                                        marginBottom: '1rem', fontSize: '0.875rem', color: 'var(--text-secondary)'
                                     }}>
                                         <Camera size={16} color="#9ca3af" />
                                         <span>Sin imágenes adjuntas — el informe se generará solo con tu prompt</span>
@@ -695,10 +695,10 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
                                     value={promptText}
                                     onChange={(e) => setPromptText(e.target.value)}
                                     placeholder="Ej: Genera un informe paso a paso sobre la instalación eléctrica realizada, incluyendo los materiales utilizados y el estado final del área..."
-                                    style={{ width: '100%', minHeight: '130px', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db', marginBottom: '1.5rem', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
+                                    style={{ width: '100%', minHeight: '130px', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--input-bg)', color: 'var(--text-main)', marginBottom: '1.5rem', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
                                 />
                                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-                                    <button onClick={() => setShowPromptInput(false)} style={{ padding: '0.6rem 1.2rem', border: '1px solid #e5e7eb', background: 'white', borderRadius: '8px', cursor: 'pointer', fontWeight: '500', color: '#374151' }}>Cancelar</button>
+                                    <button onClick={() => setShowPromptInput(false)} style={{ padding: '0.6rem 1.2rem', border: '1px solid var(--border-color)', background: 'var(--card-bg)', borderRadius: '8px', cursor: 'pointer', fontWeight: '500', color: 'var(--text-main)' }}>Cancelar</button>
                                     <button
                                         onClick={() => {
                                             handleAiImprove('generate_report');

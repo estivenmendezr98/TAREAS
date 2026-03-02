@@ -9,6 +9,28 @@
   --success-color: #10b981;
   --danger-color: #ef4444;
   --warning-color: #f59e0b;
+  --header-bg: #f9fafb;
+  --selection-bg: #eef2ff;
+  --input-bg: #ffffff;
+  --success-bg: #f0fdf4;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --primary-color: #60a5fa;
+  --primary-hover: #93c5fd;
+  --bg-color: #111827;
+  --card-bg: #1f2937;
+  --text-main: #f9fafb;
+  --text-secondary: #9ca3af;
+  --border-color: #374151;
+  --success-color: #10b981;
+  --danger-color: #ef4444;
+  --warning-color: #f59e0b;
+  --header-bg: #374151;
+  --selection-bg: #312e81;
+  --input-bg: #374151;
+  --success-bg: #064e3b;
 }
 
 * {
@@ -59,7 +81,7 @@ body {
   justify-content: center;
   gap: 1rem;
   margin-bottom: 2rem;
-  background: #e5e7eb;
+  background: var(--header-bg);
   padding: 0.25rem;
   border-radius: 99px;
   width: fit-content;
@@ -79,7 +101,7 @@ body {
 }
 
 .view-toggle-btn.active {
-  background: white;
+  background: var(--card-bg);
   color: var(--primary-color);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
@@ -92,7 +114,7 @@ body {
 .project-form {
   display: flex;
   gap: 1rem;
-  background: white;
+  background: var(--card-bg);
   padding: 0.5rem;
   border-radius: 99px;
   /* Pill shape */
@@ -108,6 +130,8 @@ body {
   font-size: 1.125rem;
   border-radius: 99px;
   outline: none;
+  background: var(--input-bg);
+  color: var(--text-main);
 }
 
 .project-button {
@@ -155,7 +179,7 @@ body {
 }
 
 .project-header {
-  background: #f9fafb;
+  background: var(--header-bg);
   padding: 1rem 1.5rem;
   border-bottom: 1px solid var(--border-color);
   display: flex;
@@ -164,7 +188,7 @@ body {
 }
 
 .project-header.selection-mode {
-  background: #eef2ff;
+  background: var(--selection-bg);
   /* Light blueish tint for selection mode */
   border-bottom-color: var(--primary-color);
 }
@@ -181,7 +205,7 @@ body {
 }
 
 .archived-badge {
-  background: #f3f4f6;
+  background: var(--header-bg);
   color: var(--text-secondary);
   font-size: 0.75rem;
   padding: 0.25rem 0.5rem;
@@ -218,6 +242,8 @@ body {
   border: 1px solid var(--primary-color);
   border-radius: 4px;
   font-size: 1.25rem;
+  background: var(--input-bg);
+  color: var(--text-main);
 }
 
 /* Common Action Buttons */
@@ -311,6 +337,8 @@ body {
   padding: 0.5rem 1rem;
   border: 1px solid var(--border-color);
   border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text-main);
 }
 
 .task-form .date-input {
@@ -318,10 +346,12 @@ body {
   padding: 0.5rem;
   border: 1px solid var(--border-color);
   border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text-main);
 }
 
 .task-form .add-button {
-  background: var(--text-main);
+  background: var(--primary-color);
   color: white;
   border: none;
   width: 42px;
@@ -350,8 +380,12 @@ body {
 }
 
 .task-item-container:hover {
-  background: #f9fafb;
+  background: var(--header-bg);
   border-color: var(--border-color);
+}
+
+.task-item-container.delivered {
+  background-color: var(--success-bg);
 }
 
 .task-main-row {
@@ -378,7 +412,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: white;
+  background: var(--card-bg);
   transition: all 0.2s;
 }
 
@@ -399,12 +433,16 @@ body {
   padding: 0.25rem 0.5rem;
   border: 1px solid var(--primary-color);
   border-radius: 4px;
+  background: var(--input-bg);
+  color: var(--text-main);
 }
 
 .edit-task-date {
   padding: 0.25rem;
   border: 1px solid var(--primary-color);
   border-radius: 4px;
+  background: var(--input-bg);
+  color: var(--text-main);
 }
 
 .edit-actions {
@@ -487,7 +525,7 @@ body {
 }
 
 .modal-content {
-  background: white;
+  background: var(--card-bg);
   width: 90%;
   max-width: 800px;
   max-height: 90vh;
@@ -556,6 +594,8 @@ body {
   font-family: inherit;
   font-size: 1rem;
   margin-bottom: 0.5rem;
+  background: var(--input-bg);
+  color: var(--text-main);
 }
 
 .report-textarea:focus {
@@ -814,12 +854,10 @@ body {
 
 /* Calendar View Styles */
 .calendar-container {
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
   padding: 1.5rem;
-  margin-top: 1rem;
 }
 
 .calendar-header {
@@ -875,9 +913,13 @@ body {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   margin-bottom: 0.5rem;
+}
+
+.weekday-label {
   text-align: center;
   font-weight: 600;
   color: var(--text-secondary);
+  padding-bottom: 0.5rem;
 }
 
 .calendar-grid {
@@ -892,26 +934,27 @@ body {
 }
 
 .calendar-cell {
-  background: white;
+  background: var(--card-bg);
   min-height: 100px;
   padding: 0.5rem;
   display: flex;
   flex-direction: column;
   cursor: pointer;
-  transition: background 0.1s;
+  transition: background 0.2s;
 }
 
 .calendar-cell:hover {
-  background: #f9fafb;
+  background: var(--header-bg);
 }
 
 .calendar-cell.other-month {
-  background: #f3f4f6;
+  background: var(--header-bg);
+  opacity: 0.5;
   color: #9ca3af;
 }
 
 .calendar-cell.today {
-  background: #eff6ff;
+  background: var(--selection-bg);
 }
 
 .calendar-cell.selected-day {
@@ -919,7 +962,7 @@ body {
 }
 
 .day-number {
-  font-weight: 600;
+  font-weight: 500;
   margin-bottom: 0.5rem;
   color: var(--text-main);
 }
@@ -995,21 +1038,21 @@ body {
   align-items: center;
   gap: 1rem;
   padding: 0.75rem;
-  background: white;
+  background: var(--card-bg);
   border-radius: 6px;
   border: 1px solid var(--border-color);
 }
 
 .detail-item.completed {
-  background: #f0fdf4;
-  border-color: #bbf7d0;
+  background: var(--success-bg);
+  border-color: var(--success-color);
 }
 
 .detail-project {
   font-size: 0.75rem;
   font-weight: 700;
   color: var(--text-secondary);
-  background: #e5e7eb;
+  background: var(--header-bg);
   padding: 2px 6px;
   border-radius: 4px;
   text-transform: uppercase;
@@ -1053,7 +1096,7 @@ body {
 }
 
 .clickable-task:hover {
-  background: #eff6ff;
+  background: var(--selection-bg);
   border-color: var(--primary-color);
   transform: translateX(4px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
@@ -1635,15 +1678,15 @@ body {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   font-size: 0.95rem;
-  background: white;
+  background: var(--input-bg);
+  color: var(--text-main);
   cursor: pointer;
   outline: none;
   transition: border-color 0.2s;
 }
 
 .dp-input:hover {
-  border-color: #d1d5db;
-  /* gray-300 */
+  border-color: var(--primary-color);
 }
 
 .dp-icons {
@@ -1666,13 +1709,13 @@ body {
   justify-content: center;
   padding: 2px;
   border-radius: 50%;
-  background: #f3f4f6;
+  background: var(--header-bg);
   color: var(--text-secondary);
   transition: all 0.2s;
 }
 
 .dp-clear-btn:hover {
-  background: #e5e7eb;
+  background: var(--border-color);
   color: var(--danger-color);
 }
 
@@ -1682,10 +1725,10 @@ body {
   left: 0;
   width: 300px;
   /* Fixed width for calendar */
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-  border: 1px solid #f3f4f6;
+  border: 1px solid var(--border-color);
   z-index: 100;
   padding: 1rem;
   animation: slideIn 0.2s ease-out;
@@ -1761,7 +1804,7 @@ body {
 }
 
 .dp-day:hover:not(.disabled) {
-  background: #f3f4f6;
+  background: var(--header-bg);
   color: var(--primary-color);
 }
 
@@ -1772,13 +1815,14 @@ body {
 }
 
 .dp-day.disabled {
-  color: #d1d5db;
+  color: var(--text-secondary);
   /* Light gray for other months */
   pointer-events: none;
+  opacity: 0.5;
 }
 
 .dp-footer {
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--border-color);
   margin-top: 0.5rem;
   padding-top: 0.5rem;
   display: flex;
@@ -1798,7 +1842,7 @@ body {
 }
 
 .dp-today-btn:hover {
-  background: #eff6ff;
+  background: var(--selection-bg);
 }
 
 /* Mobile adjustments */

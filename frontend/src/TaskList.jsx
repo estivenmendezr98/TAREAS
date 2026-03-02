@@ -138,7 +138,7 @@ const TaskList = ({ tasks, onTaskUpdated, selectionMode, selectedIds, onToggleSe
         <>
             <ul className={`task-list ${selectionMode ? 'selection-active' : ''}`}>
                 {tasks.map((task) => (
-                    <li key={task.id} className={`task-item-container ${task.completada ? 'completed' : ''} ${task.entregado ? 'delivered' : ''}`} style={{ backgroundColor: task.entregado ? '#f0fdf4' : undefined }}>
+                    <li key={task.id} className={`task-item-container ${task.completada ? 'completed' : ''} ${task.entregado ? 'delivered' : ''}`}>
                         <div className="task-main-row">
                             {selectionMode ? (
                                 <div className="selection-checkbox-container" onClick={() => onToggleSelect(task.id)}>
@@ -202,7 +202,7 @@ const TaskList = ({ tasks, onTaskUpdated, selectionMode, selectedIds, onToggleSe
                                                 {task.entregado && (
                                                     <span style={{
                                                         display: 'flex', alignItems: 'center', padding: '2px 6px',
-                                                        borderRadius: '4px', background: '#d1fae5', color: '#059669',
+                                                        borderRadius: '4px', background: 'var(--success-bg)', color: 'var(--success-color)',
                                                         fontSize: '0.72rem', fontWeight: 600, gap: '4px', marginTop: '2px'
                                                     }} title="Tarea entregada">
                                                         <Send size={10} />
@@ -215,8 +215,8 @@ const TaskList = ({ tasks, onTaskUpdated, selectionMode, selectedIds, onToggleSe
                                                         alignItems: 'center',
                                                         gap: '4px',
                                                         fontSize: '0.72rem',
-                                                        color: '#b0b8c8',
-                                                        borderLeft: '2px solid #e5e7eb',
+                                                        color: 'var(--text-secondary)',
+                                                        borderLeft: '2px solid var(--border-color)',
                                                         paddingLeft: '6px',
                                                         marginTop: '1px'
                                                     }} title="Última modificación">

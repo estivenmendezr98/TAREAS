@@ -144,7 +144,7 @@ const UsersView = ({ onImpersonate }) => {
             {isMobile ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {users.map(u => (
-                        <div key={u.id} style={{ padding: '15px', background: 'white', borderRadius: '8px', border: '1px solid #eee', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div key={u.id} style={{ padding: '15px', background: 'var(--card-bg)', borderRadius: '8px', border: '1px solid var(--border-color)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                 <span style={{ fontWeight: 'bold', fontSize: '14px', color: '#333' }}>{u.username}</span>
                                 <span style={{

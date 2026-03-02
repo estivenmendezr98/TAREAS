@@ -39,12 +39,12 @@ const SelectArchivedModal = ({ isOpen, onClose, archivedTasks, selectedIds, onSe
     return (
         <div className="modal-overlay" onClick={onClose} style={{ zIndex: 1200 }}>
             <div className="modal-content" style={{ maxWidth: '600px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', padding: 0 }} onClick={e => e.stopPropagation()}>
-                <div className="modal-header" style={{ padding: '1.5rem', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className="modal-header" style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <Archive size={24} color="#f59e0b" />
                         <div>
                             <h2 style={{ fontSize: '1.25rem', margin: '0 0 4px 0' }}>Seleccionar Tareas Archivadas</h2>
-                            <p style={{ fontSize: '0.9rem', color: '#6b7280', margin: 0 }}>
+                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0 }}>
                                 Elige cuáles tareas archivadas deseas mostrar en el diagrama.
                             </p>
                         </div>
@@ -54,15 +54,15 @@ const SelectArchivedModal = ({ isOpen, onClose, archivedTasks, selectedIds, onSe
 
                 <div className="modal-body" style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
                     {!hasArchived ? (
-                        <p style={{ color: '#6b7280', textAlign: 'center', marginTop: '2rem' }}>No hay tareas archivadas disponibles.</p>
+                        <p style={{ color: 'var(--text-secondary)', textAlign: 'center', marginTop: '2rem' }}>No hay tareas archivadas disponibles.</p>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             {Object.entries(grouped).map(([projectTitle, tasks]) => (
-                                <div key={projectTitle} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
-                                    <div style={{ padding: '10px 15px', background: '#f9fafb', fontWeight: 600, color: '#374151', borderBottom: '1px solid #e5e7eb' }}>
+                                <div key={projectTitle} style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
+                                    <div style={{ padding: '10px 15px', background: 'var(--header-bg)', fontWeight: 600, color: 'var(--text-main)', borderBottom: '1px solid var(--border-color)' }}>
                                         {projectTitle}
                                     </div>
-                                    <div style={{ padding: '0.5rem 0', background: 'white' }}>
+                                    <div style={{ padding: '0.5rem 0', background: 'var(--card-bg)' }}>
                                         {tasks.map(task => {
                                             const isSelected = localSelected.has(task.id);
                                             return (
@@ -75,7 +75,7 @@ const SelectArchivedModal = ({ isOpen, onClose, archivedTasks, selectedIds, onSe
                                                         {isSelected ? <CheckCircle size={20} color="#3b82f6" /> : <Square size={20} color="#d1d5db" />}
                                                     </div>
                                                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                        <span style={{ fontSize: '0.95rem', color: isSelected ? '#1f2937' : '#6b7280', fontWeight: isSelected ? 500 : 400 }}>
+                                                        <span style={{ fontSize: '0.95rem', color: isSelected ? 'var(--text-main)' : 'var(--text-secondary)', fontWeight: isSelected ? 500 : 400 }}>
                                                             {task.descripcion}
                                                         </span>
                                                         <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
@@ -107,8 +107,8 @@ const SelectArchivedModal = ({ isOpen, onClose, archivedTasks, selectedIds, onSe
                     )}
                 </div>
 
-                <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #e5e7eb', background: '#f9fafb', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                    <button onClick={onClose} style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: '1px solid #ccc', background: 'white', cursor: 'pointer', fontWeight: 500 }}>
+                <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)', background: 'var(--header-bg)', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                    <button onClick={onClose} style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', cursor: 'pointer', fontWeight: 500, color: 'var(--text-main)' }}>
                         Cancelar
                     </button>
                     <button onClick={handleSave} style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: 'none', background: '#3b82f6', color: 'white', cursor: 'pointer', fontWeight: 500 }}>

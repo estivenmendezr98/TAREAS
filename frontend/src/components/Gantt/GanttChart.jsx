@@ -8,7 +8,7 @@ import SelectArchivedModal from './SelectArchivedModal';
 // --- ESTILOS OPTIMIZADOS (BALANCED SIZE) ---
 // --- ESTILOS OPTIMIZADOS (DYNAMIC) ---
 const getStyles = (isMobile, isSidebarCollapsed) => ({
-    container: { display: 'flex', flexDirection: 'column', height: '100%', border: '1px solid #e0e0e0', fontFamily: 'sans-serif', backgroundColor: 'white', overflow: 'hidden' },
+    container: { display: 'flex', flexDirection: 'column', height: '100%', border: '1px solid var(--border-color)', fontFamily: 'sans-serif', backgroundColor: 'var(--card-bg)', overflow: 'hidden' },
     mainWrapper: { display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' },
     // CONTROL BAR
     controlBar: {
@@ -16,8 +16,8 @@ const getStyles = (isMobile, isSidebarCollapsed) => ({
         flexWrap: 'wrap',
         gap: '10px',
         padding: '10px',
-        backgroundColor: '#fff',
-        borderBottom: '1px solid #e0e0e0',
+        backgroundColor: 'var(--card-bg)',
+        borderBottom: '1px solid var(--border-color)',
         alignItems: 'center',
         justifyContent: 'space-between',
         minHeight: 'auto'
@@ -26,9 +26,9 @@ const getStyles = (isMobile, isSidebarCollapsed) => ({
         width: isSidebarCollapsed ? (isMobile ? '100px' : '40px') : (isMobile ? '280px' : '350px'), // 100px on mobile collapsed to show some text
         minWidth: isSidebarCollapsed ? (isMobile ? '100px' : '40px') : (isMobile ? '280px' : '350px'),
         display: 'flex', flexDirection: 'column',
-        borderRight: '2px solid #ddd',
+        borderRight: '2px solid var(--border-color)',
         zIndex: isMobile && !isSidebarCollapsed ? 50 : 20,
-        backgroundColor: 'white',
+        backgroundColor: 'var(--card-bg)',
         transition: 'width 0.3s ease, transform 0.3s ease',
         position: isMobile && !isSidebarCollapsed ? 'absolute' : 'relative',
         height: isMobile && !isSidebarCollapsed ? '100%' : 'auto',
@@ -44,12 +44,12 @@ const getStyles = (isMobile, isSidebarCollapsed) => ({
     sidebarHeader: {
         height: '100px',
         minHeight: '100px',
-        borderBottom: '1px solid #ccc',
+        borderBottom: '1px solid var(--border-color)',
         display: 'flex',
         flexDirection: 'row', // Align toggle and title horizontally
         alignItems: 'center',
         padding: '10px',
-        backgroundColor: '#f9fafb',
+        backgroundColor: 'var(--header-bg)',
         gap: '10px',
         overflow: 'hidden'
     },
@@ -60,18 +60,18 @@ const getStyles = (isMobile, isSidebarCollapsed) => ({
     },
     canvas: { flex: 1, overflow: 'auto', position: 'relative', display: 'flex', flexDirection: 'column' },
     // HEADER ROW
-    headerContainer: { height: '100px', minHeight: '100px', position: 'sticky', top: 0, zIndex: 30, backgroundColor: '#f9fafb', borderBottom: '1px solid #ccc', overflow: 'hidden' },
+    headerContainer: { height: '100px', minHeight: '100px', position: 'sticky', top: 0, zIndex: 30, backgroundColor: 'var(--header-bg)', borderBottom: '1px solid var(--border-color)', overflow: 'hidden' },
     row: { display: 'flex', height: '30px', boxSizing: 'border-box' },
-    cellHeader: { display: 'flex', alignItems: 'center', justifyContent: 'center', borderRight: '1px solid #e0e0e0', fontSize: isMobile ? '10px' : '12px', fontWeight: '600', color: '#555', boxSizing: 'border-box' },
-    cellDay: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRight: '1px solid #eee', fontSize: isMobile ? '9px' : '11px', height: '100%', boxSizing: 'border-box' },
+    cellHeader: { display: 'flex', alignItems: 'center', justifyContent: 'center', borderRight: '1px solid var(--border-color)', fontSize: isMobile ? '10px' : '12px', fontWeight: '600', color: 'var(--text-main)', boxSizing: 'border-box' },
+    cellDay: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRight: '1px solid var(--border-color)', fontSize: isMobile ? '9px' : '11px', height: '100%', boxSizing: 'border-box', color: 'var(--text-main)' },
     bodyContainer: { position: 'relative' },
-    groupHeader: { height: '30px', backgroundColor: '#f3f4f6', display: 'flex', alignItems: 'center', paddingLeft: '10px', fontWeight: 'bold', fontSize: '12px', color: '#555', borderBottom: '1px solid #e0e0e0', boxSizing: 'border-box', overflow: 'hidden', whiteSpace: 'nowrap' },
-    gridRow: { display: 'flex', height: '60px', borderBottom: '1px solid #f0f0f0', position: 'relative', boxSizing: 'border-box' },
-    gridCell: { borderRight: '1px solid #f9f9f9', height: '100%', boxSizing: 'border-box' },
+    groupHeader: { height: '30px', backgroundColor: 'var(--header-bg)', display: 'flex', alignItems: 'center', paddingLeft: '10px', fontWeight: 'bold', fontSize: '12px', color: 'var(--text-main)', borderBottom: '1px solid var(--border-color)', boxSizing: 'border-box', overflow: 'hidden', whiteSpace: 'nowrap' },
+    gridRow: { display: 'flex', height: '60px', borderBottom: '1px solid var(--border-color)', position: 'relative', boxSizing: 'border-box' },
+    gridCell: { borderRight: '1px solid var(--border-color)', height: '100%', boxSizing: 'border-box' },
     taskItem: {
         height: '60px',
         padding: isSidebarCollapsed ? (isMobile ? '5px' : '0') : (isMobile ? '5px' : '5px 15px'),
-        borderBottom: '1px solid #f0f0f0',
+        borderBottom: '1px solid var(--border-color)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: isSidebarCollapsed && !isMobile ? 'center' : 'flex-start',
@@ -79,7 +79,7 @@ const getStyles = (isMobile, isSidebarCollapsed) => ({
         lineHeight: '1.2',
         overflow: 'hidden',
         fontSize: isMobile ? '10px' : '12px',
-        color: '#333'
+        color: 'var(--text-main)'
     },
     bar: { position: 'absolute', height: '34px', backgroundColor: '#3b82f6', borderRadius: '4px', top: '13px', display: 'flex', alignItems: 'center', padding: '0 8px', color: 'white', fontSize: isMobile ? '9px' : '11px', cursor: 'grab', zIndex: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', userSelect: 'none' },
     resizeL: { position: 'absolute', left: 0, top: 0, bottom: 0, width: '15px', cursor: 'w-resize', zIndex: 20 },
@@ -214,10 +214,10 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
                     isWeekend: weekend,
                     isHoliday: holiday,
                     isToday: isToday,
-                    bg: isToday ? '#e3f2fd' : (holiday ? '#ffebee' : (weekend ? '#f8f9fa' : 'white')),
-                    color: isToday ? '#1976d2' : (holiday ? '#d32f2f' : (weekend ? '#999' : '#333')),
+                    bg: isToday ? '#e3f2fd' : (holiday ? '#ffebee' : (weekend ? 'var(--header-bg)' : 'transparent')),
+                    color: isToday ? '#1976d2' : (holiday ? '#d32f2f' : (weekend ? 'var(--text-secondary)' : 'var(--text-main)')),
                     weight: isToday || holiday ? 'bold' : 'normal',
-                    borderLeft: isToday ? '2px solid #ef5350' : '1px solid #eee'
+                    borderLeft: isToday ? '2px solid #ef5350' : '1px solid var(--border-color)'
                 });
                 current.setDate(current.getDate() + 1);
             }
@@ -236,10 +236,10 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
                     label: `Sem ${weekNum}`,
                     subLabel: `${weekStart.getDate()}-${weekEnd.getDate()}`,
                     isToday: isCurrentWeek,
-                    bg: isCurrentWeek ? '#e3f2fd' : 'white',
-                    color: isCurrentWeek ? '#1976d2' : '#333',
+                    bg: isCurrentWeek ? '#e3f2fd' : 'transparent',
+                    color: isCurrentWeek ? '#1976d2' : 'var(--text-main)',
                     weight: isCurrentWeek ? 'bold' : 'normal',
-                    borderLeft: '1px solid #eee'
+                    borderLeft: '1px solid var(--border-color)'
                 });
 
                 // Advance 7 days
@@ -470,7 +470,7 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
                         ? (task.completada ? '#10b981' : '#3b82f6')
                         : (isWeekend && viewScale === 'day' ? '#f9fafb' : '#ffffff');
 
-                    const cellColor = isActive ? '#ffffff' : '#000000';
+                    const cellColor = isActive ? '#ffffff' : 'var(--text-main)';
 
                     table += `<td style="background-color: ${cellBg}; color: ${cellColor}; text-align: center;">${isActive ? '' : ''}</td>`;
                 });
@@ -593,23 +593,23 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
                 {/* Navigation & Month */}
                 {/* Navigation & Month */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <button onClick={handlePrevMonth} aria-label="Mes Anterior" style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '2px' }}><ChevronLeft size={20} /></button>
-                    <span style={{ fontWeight: 'bold', fontSize: isMobile ? '14px' : '16px' }} id="month-label">{selectedMonth.toLocaleString('es-ES', { month: 'long', year: 'numeric' }).toUpperCase()}</span>
-                    <button onClick={handleNextMonth} aria-label="Mes Siguiente" style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '2px' }}><ChevronRight size={20} /></button>
+                    <button onClick={handlePrevMonth} aria-label="Mes Anterior" style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '2px', color: 'var(--text-main)' }}><ChevronLeft size={20} /></button>
+                    <span style={{ fontWeight: 'bold', fontSize: isMobile ? '14px' : '16px', color: 'var(--text-main)' }} id="month-label">{selectedMonth.toLocaleString('es-ES', { month: 'long', year: 'numeric' }).toUpperCase()}</span>
+                    <button onClick={handleNextMonth} aria-label="Mes Siguiente" style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '2px', color: 'var(--text-main)' }}><ChevronRight size={20} /></button>
                 </div>
 
                 {/* View Scale & Grouping */}
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                     <div style={{ display: 'flex', gap: '5px' }} role="group" aria-label="Escala de vista">
-                        <button onClick={() => setViewScale('day')} aria-pressed={viewScale === 'day'} style={{ padding: '4px 10px', fontSize: '12px', borderRadius: '4px', border: '1px solid #ccc', backgroundColor: viewScale === 'day' ? '#3b82f6' : 'white', color: viewScale === 'day' ? 'white' : '#333', cursor: 'pointer' }}>Día</button>
-                        <button onClick={() => setViewScale('week')} aria-pressed={viewScale === 'week'} style={{ padding: '4px 10px', fontSize: '12px', borderRadius: '4px', border: '1px solid #ccc', backgroundColor: viewScale === 'week' ? '#3b82f6' : 'white', color: viewScale === 'week' ? 'white' : '#333', cursor: 'pointer' }}>Semana</button>
+                        <button onClick={() => setViewScale('day')} aria-pressed={viewScale === 'day'} style={{ padding: '4px 10px', fontSize: '12px', borderRadius: '4px', border: '1px solid var(--border-color)', backgroundColor: viewScale === 'day' ? '#3b82f6' : 'var(--card-bg)', color: viewScale === 'day' ? 'white' : 'var(--text-main)', cursor: 'pointer' }}>Día</button>
+                        <button onClick={() => setViewScale('week')} aria-pressed={viewScale === 'week'} style={{ padding: '4px 10px', fontSize: '12px', borderRadius: '4px', border: '1px solid var(--border-color)', backgroundColor: viewScale === 'week' ? '#3b82f6' : 'var(--card-bg)', color: viewScale === 'week' ? 'white' : 'var(--text-main)', cursor: 'pointer' }}>Semana</button>
                     </div>
 
                     <select
                         value={groupingMode}
                         onChange={(e) => setGroupingMode(e.target.value)}
                         aria-label="Agrupar por"
-                        style={{ padding: '4px', borderRadius: '4px', border: '1px solid #ccc', fontSize: '12px' }}
+                        style={{ padding: '4px', borderRadius: '4px', border: '1px solid var(--border-color)', fontSize: '12px', backgroundColor: 'var(--card-bg)', color: 'var(--text-main)' }}
                     >
                         <option value="project">Por Proyecto</option>
                         <option value="week">Por Semana</option>
@@ -620,9 +620,9 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
                         style={{
                             display: 'flex', alignItems: 'center', gap: '5px',
                             padding: '4px 10px', fontSize: '12px', borderRadius: '4px',
-                            border: `1px solid ${selectedArchivedIds.size > 0 ? '#f59e0b' : '#ccc'}`,
-                            backgroundColor: selectedArchivedIds.size > 0 ? '#fef3c7' : 'white',
-                            color: selectedArchivedIds.size > 0 ? '#92400e' : '#333',
+                            border: `1px solid ${selectedArchivedIds.size > 0 ? '#f59e0b' : 'var(--border-color)'}`,
+                            backgroundColor: selectedArchivedIds.size > 0 ? '#fef3c7' : 'var(--card-bg)',
+                            color: selectedArchivedIds.size > 0 ? '#92400e' : 'var(--text-main)',
                             cursor: 'pointer', fontWeight: selectedArchivedIds.size > 0 ? 'bold' : 'normal'
                         }}
                         title="Seleccionar tareas archivadas a mostrar"
@@ -636,8 +636,8 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
                 <div style={{ display: 'flex', gap: '5px' }}>
                     {/* Export Tools */}
                     <div style={{ display: 'flex', gap: '5px' }}>
-                        <button onClick={exportToPDF} aria-label="Exportar a PDF" title="PDF" style={{ padding: '4px', borderRadius: '4px', border: '1px solid #ccc', background: 'white', cursor: 'pointer' }}><FileIcon size={18} color="#e11d48" /></button>
-                        <button onClick={exportToExcel} aria-label="Exportar a Excel" title="Excel" style={{ padding: '4px', borderRadius: '4px', border: '1px solid #ccc', background: 'white', cursor: 'pointer' }}><FileSpreadsheet size={18} color="#10b981" /></button>
+                        <button onClick={exportToPDF} aria-label="Exportar a PDF" title="PDF" style={{ padding: '4px', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', cursor: 'pointer' }}><FileIcon size={18} color="#e11d48" /></button>
+                        <button onClick={exportToExcel} aria-label="Exportar a Excel" title="Excel" style={{ padding: '4px', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', cursor: 'pointer' }}><FileSpreadsheet size={18} color="#10b981" /></button>
                     </div>
                 </div>
             </div>
@@ -653,7 +653,7 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
                             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
                             aria-label={isSidebarCollapsed ? "Expandir barra lateral" : "Colapsar barra lateral"}
                             aria-expanded={!isSidebarCollapsed}
-                            style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid #ccc', background: '#fff', fontSize: '12px', cursor: 'pointer', marginRight: '5px' }}
+                            style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', fontSize: '12px', cursor: 'pointer', marginRight: '5px', color: 'var(--text-main)' }}
                         >
                             {isSidebarCollapsed ? '>>' : '<<'}
                         </button>
@@ -678,7 +678,7 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
                                         }}>
                                             {t.descripcion}
                                         </span>
-                                        {isSidebarCollapsed && !isMobile && <span style={{ fontSize: '10px', color: '#888' }}>#</span>}
+                                        {isSidebarCollapsed && !isMobile && <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>#</span>}
                                     </div>
                                 ))}
                             </div>
@@ -689,7 +689,7 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
                 <div style={styles.canvas} onScroll={handleScroll} ref={canvasRef}>
                     <div style={{ ...styles.headerContainer, width: `${totalWidth}px` }}>
                         {/* SPACER FOR ALIGNMENT */}
-                        <div style={{ height: '40px', borderBottom: '1px solid #eee', background: '#fafafa' }}></div>
+                        <div style={{ height: '40px', borderBottom: '1px solid var(--border-color)', background: 'var(--header-bg)' }}></div>
 
                         <div style={styles.row}> {months.map((m, i) => <div key={i} style={{ ...styles.cellHeader, width: `${m.width}px` }}>{m.name}</div>)} </div>
                         <div style={styles.row}>
@@ -715,7 +715,7 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
                                 <div key={i} style={{
                                     ...styles.gridCell,
                                     width: `${columnWidth}px`,
-                                    backgroundColor: col.bg === '#e3f2fd' ? 'rgba(239, 83, 80, 0.05)' : (col.isHoliday ? '#ffebee' : (col.isWeekend && viewScale === 'day' ? '#f9f9f9' : 'transparent')),
+                                    backgroundColor: col.bg === '#e3f2fd' ? 'rgba(239, 83, 80, 0.05)' : (col.isHoliday ? '#ffebee' : (col.isWeekend && viewScale === 'day' ? 'var(--header-bg)' : 'transparent')),
                                     borderLeft: col.borderLeft,
                                     zIndex: col.isToday ? 5 : 0
                                 }} />
@@ -723,7 +723,7 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
                         </div>
                         {Object.entries(groupedTasks).map(([projectTitle, projectTasks]) => (
                             <div key={projectTitle}>
-                                <div style={{ ...styles.groupHeader, width: '100%', backgroundColor: '#f3f4f6', borderBottom: '1px solid #e0e0e0', position: 'relative', zIndex: 10 }}>
+                                <div style={{ ...styles.groupHeader, width: '100%', backgroundColor: 'var(--header-bg)', borderBottom: '1px solid var(--border-color)', position: 'relative', zIndex: 10 }}>
                                 </div>
                                 {projectTasks.map(task => {
                                     const isDragging = dragState?.taskId === task.id;

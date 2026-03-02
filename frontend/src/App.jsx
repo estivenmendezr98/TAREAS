@@ -12,7 +12,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './components/Login';
 import CategoryManager from './components/CategoryManager';
 import MultiProjectReportModal from './components/MultiProjectReportModal';
-import { Tag, ChevronDown, ChevronRight, FileText } from 'lucide-react';
+import { Tag, ChevronDown, ChevronRight, FileText, Moon, Sun } from 'lucide-react';
 import './index.css';
 
 function AppContent() {
@@ -30,6 +30,17 @@ function AppContent() {
   const [confirmModalState, setConfirmModalState] = useState({ isOpen: false, type: null, id: null });
   const [undoStack, setUndoStack] = useState([]); // Stack of actions to undo
   const { addToast } = useToast();
+
+  const [theme, setTheme] = useState(() => localStorage.getItem('app-theme') || 'light');
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('app-theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -250,8 +261,19 @@ function AppContent() {
       <header className="app-header">
         <h1>Mis Tareas y Proyectos</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ fontSize: '14px', color: '#666' }}>Hola, {user?.username}</span>
-          <button onClick={handleLogout} style={{ padding: '5px 10px', fontSize: '12px', cursor: 'pointer', background: '#e5e7eb', border: '1px solid #ccc', borderRadius: '4px' }}>Cerrar Sesión</button>
+          <button
+            onClick={toggleTheme}
+            style={{
+              padding: '6px', cursor: 'pointer', background: 'transparent',
+              border: '1px solid var(--border-color)', borderRadius: '50%',
+              display: 'flex', color: 'var(--text-main)', alignItems: 'center', justifyContent: 'center'
+            }}
+            title={theme === 'light' ? 'Modo Oscuro' : 'Modo Claro'}
+          >
+            {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+          </button>
+          <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Hola, {user?.username}</span>
+          <button onClick={handleLogout} style={{ padding: '5px 10px', fontSize: '12px', cursor: 'pointer', background: 'var(--header-bg)', border: '1px solid var(--border-color)', color: 'var(--text-main)', borderRadius: '4px' }}>Cerrar Sesión</button>
         </div>
       </header>
 
@@ -360,8 +382,9 @@ function AppContent() {
           className={`view-toggle-btn ${viewMode === 'delivered' ? 'active' : ''}`}
           onClick={() => setViewMode('delivered')}
           style={{
-            backgroundColor: viewMode === 'delivered' ? '#d1fae5' : 'transparent',
-            color: viewMode === 'delivered' ? '#059669' : '#6b7280'
+            backgroundColor: viewMode === 'delivered' ? 'var(--success-color)' : 'transparent',
+            color: viewMode === 'delivered' ? 'white' : 'var(--text-secondary)',
+            opacity: viewMode === 'delivered' ? 1 : 0.8
           }}
         >
           Entregados
@@ -370,8 +393,9 @@ function AppContent() {
           className={`view-toggle-btn ${viewMode === 'deleted' ? 'active' : ''}`}
           onClick={() => setViewMode('deleted')}
           style={{
-            backgroundColor: viewMode === 'deleted' ? '#fee2e2' : 'transparent',
-            color: viewMode === 'deleted' ? '#ef4444' : '#6b7280'
+            backgroundColor: viewMode === 'deleted' ? 'var(--danger-color)' : 'transparent',
+            color: viewMode === 'deleted' ? 'white' : 'var(--text-secondary)',
+            opacity: viewMode === 'deleted' ? 1 : 0.8
           }}
         >
           Eliminados
@@ -381,8 +405,9 @@ function AppContent() {
             className={`view-toggle-btn ${viewMode === 'users' ? 'active' : ''}`}
             onClick={() => setViewMode('users')}
             style={{
-              backgroundColor: viewMode === 'users' ? '#e0f2fe' : 'transparent',
-              color: viewMode === 'users' ? '#0284c7' : '#6b7280'
+              backgroundColor: viewMode === 'users' ? 'var(--primary-color)' : 'transparent',
+              color: viewMode === 'users' ? 'white' : 'var(--text-secondary)',
+              opacity: viewMode === 'users' ? 1 : 0.8
             }}
           >
             Usuarios
