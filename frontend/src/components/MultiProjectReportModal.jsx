@@ -11,6 +11,7 @@ const MultiProjectReportModal = ({ isOpen, onClose, projects }) => {
     const [selectedProjectIds, setSelectedProjectIds] = useState(new Set());
     const [expandedProjects, setExpandedProjects] = useState(new Set());
     const [reportTitle, setReportTitle] = useState('Informe Global de Proyectos');
+    const [showOnlyCompleted, setShowOnlyCompleted] = useState(false);
     const { addToast } = useToast();
 
     // Reset when modal opens
@@ -21,6 +22,7 @@ const MultiProjectReportModal = ({ isOpen, onClose, projects }) => {
             setSelectedProjectIds(new Set());
             setExpandedProjects(new Set());
             setReportTitle('Informe Global de Proyectos');
+            setShowOnlyCompleted(false);
         }
     }, [isOpen]);
 
@@ -42,7 +44,7 @@ const MultiProjectReportModal = ({ isOpen, onClose, projects }) => {
         // Keep project selection state in sync
         setSelectedProjectIds(prev => {
             const project = projects.find(p => p.id === projectId);
-            const projectTaskIds = new Set(project.tasks.filter(t => !t.deleted_at).map(t => t.id));
+            const projectTaskIds = new Set(project.tasks.filter(t => !t.deleted_at && (!showOnlyCompleted || t.completada)).map(t => t.id));
             // After this toggle, check how many project tasks will be selected
             const afterToggle = selectedTaskIds.has(taskId)
                 ? new Set([...selectedTaskIds].filter(id => id !== taskId))
@@ -57,7 +59,7 @@ const MultiProjectReportModal = ({ isOpen, onClose, projects }) => {
     /* ── toggle full project (select/deselect all its tasks) ── */
     const handleToggleProject = (projectId) => {
         const project = projects.find(p => p.id === projectId);
-        const activeTasks = project.tasks.filter(t => !t.deleted_at);
+        const activeTasks = project.tasks.filter(t => !t.deleted_at && (!showOnlyCompleted || t.completada));
         const isSelected = selectedProjectIds.has(projectId);
 
         if (isSelected) {
@@ -171,11 +173,18 @@ const MultiProjectReportModal = ({ isOpen, onClose, projects }) => {
                             onChange={(e) => setReportTitle(e.target.value)}
                             style={{ width: '100%' }}
                         />
+
+                        <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }} onClick={() => setShowOnlyCompleted(!showOnlyCompleted)}>
+                            <div style={{ width: 18, height: 18, borderRadius: '4px', border: '1px solid #d1d5db', display: 'flex', alignItems: 'center', justifyContent: 'center', background: showOnlyCompleted ? '#3b82f6' : 'white' }}>
+                                {showOnlyCompleted && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                            </div>
+                            <span style={{ fontSize: '0.9rem', color: '#4b5563', userSelect: 'none' }}>Solo mostrar tareas realizadas (completadas)</span>
+                        </div>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         {projects.map(project => {
-                            const activeTasks = project.tasks.filter(t => !t.deleted_at);
+                            const activeTasks = project.tasks.filter(t => !t.deleted_at && (!showOnlyCompleted || t.completada));
                             if (activeTasks.length === 0) return null;
 
                             const isExpanded = expandedProjects.has(project.id);
