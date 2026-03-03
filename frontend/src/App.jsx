@@ -12,7 +12,8 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './components/Login';
 import CategoryManager from './components/CategoryManager';
 import MultiProjectReportModal from './components/MultiProjectReportModal';
-import { Tag, ChevronDown, ChevronRight, FileText, Moon, Sun } from 'lucide-react';
+import SettingsView from './components/SettingsView';
+import { Tag, ChevronDown, ChevronRight, FileText, Moon, Sun, Settings } from 'lucide-react';
 import './index.css';
 
 function AppContent() {
@@ -422,17 +423,30 @@ function AppContent() {
           Eliminados
         </button>
         {user?.role === 'admin' && (
-          <button
-            className={`view-toggle-btn ${viewMode === 'users' ? 'active' : ''}`}
-            onClick={() => setViewMode('users')}
-            style={{
-              backgroundColor: viewMode === 'users' ? 'var(--primary-color)' : 'transparent',
-              color: viewMode === 'users' ? 'white' : 'var(--text-secondary)',
-              opacity: viewMode === 'users' ? 1 : 0.8
-            }}
-          >
-            Usuarios
-          </button>
+          <>
+            <button
+              className={`view-toggle-btn ${viewMode === 'users' ? 'active' : ''}`}
+              onClick={() => setViewMode('users')}
+              style={{
+                backgroundColor: viewMode === 'users' ? 'var(--primary-color)' : 'transparent',
+                color: viewMode === 'users' ? 'white' : 'var(--text-secondary)',
+                opacity: viewMode === 'users' ? 1 : 0.8
+              }}
+            >
+              Usuarios
+            </button>
+            <button
+              className={`view-toggle-btn ${viewMode === 'settings' ? 'active' : ''}`}
+              onClick={() => setViewMode('settings')}
+              style={{
+                backgroundColor: viewMode === 'settings' ? 'var(--primary-color)' : 'transparent',
+                color: viewMode === 'settings' ? 'white' : 'var(--text-secondary)',
+                opacity: viewMode === 'settings' ? 1 : 0.8
+              }}
+            >
+              Ajustes de Sistema
+            </button>
+          </>
         )}
       </div>
 
@@ -594,6 +608,12 @@ function AppContent() {
         {viewMode === 'users' && user?.role === 'admin' && (
           <div style={{ flex: 1, overflow: 'auto' }}>
             <UsersView onImpersonate={handleImpersonate} />
+          </div>
+        )}
+
+        {viewMode === 'settings' && user?.role === 'admin' && (
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            <SettingsView addToast={addToast} />
           </div>
         )}
       </div>

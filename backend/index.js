@@ -232,6 +232,23 @@ const initDB = async () => {
             ALTER TABLE projects ADD COLUMN IF NOT EXISTS category_id INTEGER REFERENCES project_categories(id) ON DELETE SET NULL;
         `);
 
+        // Create System Settings Table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS settings (
+                setting_key VARCHAR(255) PRIMARY KEY,
+                setting_value TEXT NOT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        // Seed API Key from ENV if not exists
+        const envKey = process.env.GEMINI_API_KEY || '';
+        await pool.query(`
+            INSERT INTO settings (setting_key, setting_value) 
+            VALUES ('GEMINI_API_KEY', $1) 
+            ON CONFLICT (setting_key) DO NOTHING;
+        `, [envKey]);
+
         console.log('Tablas projects, tasks y task_evidence verificadas/creadas exitosamente.');
     } catch (err) {
         console.error('Error al inicializar la base de datos:', err);
@@ -254,7 +271,14 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// --- AUTH ROUTES ---
+const requireAdmin = (req, res, next) => {
+    if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Acceso denegado: Se requiere rol de administrador' });
+    }
+    next();
+};
+
+// --- AUTHENTICATION ROUTES ---
 
 // Login
 app.post('/api/login', async (req, res) => {
@@ -704,7 +728,15 @@ app.post('/api/ai/improve', authenticateToken, async (req, res) => {
     }
 
     try {
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        // GET API KEY FROM DATABASE (dynamic)
+        const keyRow = await pool.query("SELECT setting_value FROM settings WHERE setting_key = 'GEMINI_API_KEY'");
+        const dynamicApiKey = keyRow.rows.length > 0 ? keyRow.rows[0].setting_value : process.env.GEMINI_API_KEY;
+
+        if (!dynamicApiKey) {
+            return res.status(500).json({ error: "La API Key de Google Gemini no está configurada en los ajustes del sistema." });
+        }
+
+        const genAI = new GoogleGenerativeAI(dynamicApiKey);
         const generationConfig = (mode === 'analyze_images' || (mode === 'generate_report' && images && images.length > 0))
             ? { temperature: 0.4, maxOutputTokens: 8192 }  // Lower temp for image analysis = more precise descriptions
             : { temperature: 0.85, maxOutputTokens: 4096 }; // Higher temp = more natural, human-like writing
@@ -991,6 +1023,63 @@ setInterval(cleanupOldItems, 24 * 60 * 60 * 1000);
 // --- Categories Routes ---
 
 // Get all categories for user
+app.delete('/api/users/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const userId = parseInt(req.params.id);
+        if (userId === 1) { // Prevents deleting the main admin
+            return res.status(403).json({ error: 'Cannot delete the main administrator.' });
+        }
+        await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+        res.json({ message: 'User deleted successfully' });
+    } catch (err) {
+        console.error('Error deleting user:', err);
+        res.status(500).json({ error: 'Server error while deleting user' });
+    }
+});
+
+// --- SETTINGS ROUTES (ADMIN ONLY) ---
+
+// Get all settings
+app.get('/api/admin/settings', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const result = await pool.query('SELECT setting_key, setting_value FROM settings');
+
+        // Convert array to object { key: value }
+        const settingsMap = {};
+        result.rows.forEach(row => {
+            // Do not send blank values or mask them if necessary, but for our use case we send it back 
+            settingsMap[row.setting_key] = row.setting_value;
+        });
+
+        res.json(settingsMap);
+    } catch (err) {
+        console.error('Error fetching settings:', err);
+        res.status(500).json({ error: 'Error interno obteniendo configuración' });
+    }
+});
+
+// Update a setting
+app.post('/api/admin/settings', authenticateToken, requireAdmin, async (req, res) => {
+    const { setting_key, setting_value } = req.body;
+
+    if (!setting_key) return res.status(400).json({ error: 'setting_key is required' });
+
+    try {
+        await pool.query(`
+            INSERT INTO settings (setting_key, setting_value, updated_at) 
+            VALUES ($1, $2, CURRENT_TIMESTAMP) 
+            ON CONFLICT (setting_key) 
+            DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = CURRENT_TIMESTAMP;
+        `, [setting_key, setting_value]);
+
+        res.json({ message: 'Ajuste guardado exitosamente' });
+    } catch (err) {
+        console.error('Error saving setting:', err);
+        res.status(500).json({ error: 'Error interno guardando configuración' });
+    }
+});
+
+// --- PROJECT CATEGORIES ROUTES ---
 app.get('/api/categories', authenticateToken, async (req, res) => {
     try {
         const result = await pool.query(
