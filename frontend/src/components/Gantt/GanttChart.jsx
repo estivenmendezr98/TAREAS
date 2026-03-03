@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { Download, ChevronLeft, ChevronRight, FileSpreadsheet, FileIcon, Archive } from 'lucide-react';
 import SelectArchivedModal from './SelectArchivedModal';
 
@@ -507,7 +507,7 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
         }
     };
 
-    // --- VISUAL EXCEL EXPORT (HTML TABLE) ---
+    // --- NATIVE EXCEL EXPORT WITH COLORS (EXCELJS) ---
     const exportToExcel = () => {
         // Calcular Rango Completo de Fechas
         let minDate = new Date();
@@ -521,7 +521,7 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
             maxDate = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0);
         }
 
-        // Buffer visual (2 días)
+        // Buffer visual (3 días)
         minDate.setDate(minDate.getDate() - 3);
         maxDate.setDate(maxDate.getDate() + 3);
         minDate.setHours(12, 0, 0, 0);
@@ -539,13 +539,12 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
             currentDay.setDate(currentDay.getDate() + 1);
         }
 
-        // 1. Build HTML Table
-        let table = `<table border="1" style="border-collapse: collapse; font-family: Arial, sans-serif;">`;
+        const wb = new ExcelJS.Workbook();
+        const ws = wb.addWorksheet('Gantt', {
+            views: [{ state: 'frozen', xSplit: 5, ySplit: 2 }]
+        });
 
-        // --- HEADER ---
-        table += `<thead style="background-color: #f3f4f6; font-weight: bold;">`;
-
-        // Calculate Month/Year Headers (Top row)
+        // --- HEADER 1: MONTHS ---
         const monthGroups = [];
         let currentMonthGroup = null;
 
@@ -560,83 +559,111 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
         });
         if (currentMonthGroup) monthGroups.push(currentMonthGroup);
 
-        // Row 1: Month Name spanning timeline
-        table += `<tr>`;
-        table += `<td colspan="5" style="background-color: white; border: none;"></td>`; // Spacer for fixed cols
+        const row1 = ws.addRow(['', '', '', '', '']); // 5 spacer cells
+        let currentMergeCol = 6; // exceljs columns son indexadas en 1
 
         monthGroups.forEach(mg => {
-            table += `<th colspan="${mg.span}" style="background-color: #e5e7eb; padding: 5px; text-align: center; border: 1px solid #ccc;">${mg.name}</th>`;
+            const cell = row1.getCell(currentMergeCol);
+            cell.value = mg.name;
+            cell.alignment = { horizontal: 'center' };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } };
+            cell.font = { bold: true };
+            cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+
+            if (mg.span > 1) {
+                ws.mergeCells(1, currentMergeCol, 1, currentMergeCol + mg.span - 1);
+            }
+            currentMergeCol += mg.span;
         });
 
-        table += `</tr>`;
-
-        // Row 2: Column Headers
-        table += `<tr>`;
-        table += `<th style="width: 200px; padding: 5px; background-color: #f3f4f6;">Proyecto</th>`;
-        table += `<th style="width: 300px; padding: 5px; background-color: #f3f4f6;">Tarea</th>`;
-        table += `<th style="width: 100px; padding: 5px; background-color: #f3f4f6;">Inicio</th>`;
-        table += `<th style="width: 100px; padding: 5px; background-color: #f3f4f6;">Fin</th>`;
-        table += `<th style="width: 80px; padding: 5px; background-color: #f3f4f6;">Estado</th>`;
-
+        // --- HEADER 2: DAYS & COLUMNS ---
+        const r2 = ['Proyecto', 'Tarea', 'Inicio', 'Fin', 'Estado'];
         exportCols.forEach(col => {
-            const label = `${col.label} ${col.subLabel}`;
-            const bg = col.isWeekend ? '#f9fafb' : '#ffffff';
-            const width = '30px'; // Forzamos vista diaria para Excel completo
-            table += `<th style="width: ${width}; padding: 2px; text-align: center; background-color: ${bg}; font-size: 10px; border: 1px solid #ccc;">${label}</th>`;
+            r2.push(`${col.label} ${col.subLabel}`);
         });
-        table += `</tr></thead>`;
+        const row2 = ws.addRow(r2);
+        row2.eachCell((cell, colNumber) => {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+            cell.font = { bold: true };
+            cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        });
 
-        // Body
-        table += `<tbody>`;
+        // Fijar anchos de columna
+        ws.getColumn(1).width = 25;
+        ws.getColumn(2).width = 40;
+        ws.getColumn(3).width = 15;
+        ws.getColumn(4).width = 15;
+        ws.getColumn(5).width = 12;
+        for (let i = 0; i < exportCols.length; i++) {
+            ws.getColumn(6 + i).width = 5;
+        }
 
+        // --- BODY ---
         Object.entries(groupedTasks).forEach(([projectTitle, projectTasks]) => {
             // Project Header Row
-            const totalCols = 5 + exportCols.length;
-            table += `<tr style="background-color: #e5e7eb; font-weight: bold;"><td colspan="${totalCols}" style="padding: 5px; border: 1px solid #ccc;">${projectTitle}</td></tr>`;
+            const projRow = ws.addRow([projectTitle]);
+            projRow.getCell(1).font = { bold: true };
+            projRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } };
+            ws.mergeCells(projRow.number, 1, projRow.number, 5 + exportCols.length);
 
             projectTasks.forEach(task => {
-                table += `<tr>`;
-                table += `<td style="border: 1px solid #eee;">${projectTitle}</td>`;
-                table += `<td style="border: 1px solid #eee;">${task.descripcion}</td>`;
-                table += `<td style="border: 1px solid #eee;">${formatLocalDate(task._start)}</td>`;
-                table += `<td style="border: 1px solid #eee;">${formatLocalDate(task._end)}</td>`;
-                table += `<td style="border: 1px solid #eee;">${task.completada ? 'Completada' : 'Pendiente'}</td>`;
+                const taskRow = ws.addRow([
+                    projectTitle,
+                    task.descripcion,
+                    formatLocalDate(task._start),
+                    formatLocalDate(task._end),
+                    task.completada ? 'Completada' : 'Pendiente'
+                ]);
+
+                // Borde suave a las celdas de texto
+                for (let i = 1; i <= 5; i++) {
+                    taskRow.getCell(i).border = {
+                        top: { style: 'thin', color: { argb: 'FFEEEEEE' } },
+                        bottom: { style: 'thin', color: { argb: 'FFEEEEEE' } },
+                        left: { style: 'thin', color: { argb: 'FFEEEEEE' } },
+                        right: { style: 'thin', color: { argb: 'FFEEEEEE' } }
+                    };
+                }
 
                 // Timeline Cells
-                exportCols.forEach(col => {
-                    // Check intersection
+                exportCols.forEach((col, index) => {
                     let isActive = false;
-                    let isWeekend = col.isWeekend;
-
                     const colDate = col.date.getTime(); // Noon
                     const start = task._start.getTime();
                     const end = task._end.getTime();
                     if (colDate >= start && colDate <= end) isActive = true;
 
-                    const cellBg = isActive
-                        ? (task.completada ? '#10b981' : '#3b82f6')
-                        : (isWeekend ? '#f9fafb' : '#ffffff');
+                    const cell = taskRow.getCell(6 + index);
 
-                    const cellColor = isActive ? '#ffffff' : 'var(--text-main)';
+                    if (isActive) {
+                        const color = task.completada ? 'FF10B981' : 'FF3B82F6';
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color } };
+                    } else if (col.isWeekend) {
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9FAFB' } }; // gris claro
+                    }
 
-                    table += `<td style="background-color: ${cellBg}; color: ${cellColor}; text-align: center;">${isActive ? '' : ''}</td>`;
+                    cell.border = {
+                        top: { style: 'thin', color: { argb: 'FFEEEEEE' } },
+                        left: { style: 'thin', color: { argb: 'FFEEEEEE' } },
+                        bottom: { style: 'thin', color: { argb: 'FFEEEEEE' } },
+                        right: { style: 'thin', color: { argb: 'FFEEEEEE' } }
+                    };
                 });
-                table += `</tr>`;
             });
         });
 
-        table += `</tbody></table>`;
-
-        // 2. Create Blob and Download
-        const blob = new Blob([table], { type: 'application/vnd.ms-excel' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Gantt_Completo_${formatLocalDate(new Date())}.xls`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        // 3. GENERATE NATIVE EXCEL WORKBOOK BUFFER
+        wb.xlsx.writeBuffer().then((buffer) => {
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Gantt_Completo_${formatLocalDate(new Date())}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        });
     };
 
 

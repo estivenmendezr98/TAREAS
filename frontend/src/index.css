@@ -1281,9 +1281,8 @@ select option {
     /* Override flex-center */
     gap: 0.5rem;
     position: relative;
-    /* padding-bottom: 2.5rem;  <-- REMOVED: No longer needed as actions take space */
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     margin-bottom: 0.75rem;
     padding: 1rem;
