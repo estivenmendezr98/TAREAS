@@ -148,12 +148,12 @@ const MultiProjectReportModal = ({ isOpen, onClose, projects }) => {
             <div className="modal-content" style={{ maxWidth: '800px', height: '80vh', display: 'flex', flexDirection: 'column', padding: 0 }} onClick={e => e.stopPropagation()}>
 
                 {/* Header */}
-                <div className="modal-header" style={{ padding: '1.5rem', borderBottom: '1px solid #e5e7eb' }}>
+                <div className="modal-header" style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-color)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <FileText size={24} color="#3b82f6" />
+                        <FileText size={24} color="var(--primary-color)" />
                         <div>
-                            <h2 style={{ fontSize: '1.25rem', marginBottom: '4px' }}>Generar Informe Global</h2>
-                            <p style={{ fontSize: '0.9rem', color: '#6b7280', margin: 0 }}>
+                            <h2 style={{ fontSize: '1.25rem', marginBottom: '4px', color: 'var(--text-main)' }}>Generar Informe Global</h2>
+                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0 }}>
                                 Selecciona las tareas — el informe respetará el orden de selección.
                             </p>
                         </div>
@@ -165,7 +165,7 @@ const MultiProjectReportModal = ({ isOpen, onClose, projects }) => {
                 <div className="modal-body" style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
 
                     <div style={{ marginBottom: '1.5rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, color: '#374151' }}>Título del Informe</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, color: 'var(--text-main)' }}>Título del Informe</label>
                         <input
                             type="text"
                             className="task-input"
@@ -175,10 +175,10 @@ const MultiProjectReportModal = ({ isOpen, onClose, projects }) => {
                         />
 
                         <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }} onClick={() => setShowOnlyCompleted(!showOnlyCompleted)}>
-                            <div style={{ width: 18, height: 18, borderRadius: '4px', border: '1px solid #d1d5db', display: 'flex', alignItems: 'center', justifyContent: 'center', background: showOnlyCompleted ? '#3b82f6' : 'white' }}>
+                            <div style={{ width: 18, height: 18, borderRadius: '4px', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: showOnlyCompleted ? 'var(--primary-color)' : 'var(--input-bg)' }}>
                                 {showOnlyCompleted && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                             </div>
-                            <span style={{ fontSize: '0.9rem', color: '#4b5563', userSelect: 'none' }}>Solo mostrar tareas realizadas (completadas)</span>
+                            <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', userSelect: 'none' }}>Solo mostrar tareas realizadas (completadas)</span>
                         </div>
                     </div>
 
@@ -191,37 +191,37 @@ const MultiProjectReportModal = ({ isOpen, onClose, projects }) => {
                             const isProjectSelected = selectedProjectIds.has(project.id);
 
                             return (
-                                <div key={project.id} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+                                <div key={project.id} style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
 
                                     {/* Project header */}
                                     <div
-                                        style={{ display: 'flex', alignItems: 'center', padding: '10px 15px', background: '#f9fafb', cursor: 'pointer', borderBottom: isExpanded ? '1px solid #e5e7eb' : 'none' }}
+                                        style={{ display: 'flex', alignItems: 'center', padding: '10px 15px', background: 'var(--header-bg)', cursor: 'pointer', borderBottom: isExpanded ? '1px solid var(--border-color)' : 'none' }}
                                         onClick={() => toggleExpand(project.id)}
                                     >
                                         <div onClick={e => { e.stopPropagation(); handleToggleProject(project.id); }} style={{ marginRight: '10px', cursor: 'pointer' }}>
                                             {isProjectSelected
-                                                ? <div style={{ width: 20, height: 20, borderRadius: '4px', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                ? <div style={{ width: 20, height: 20, borderRadius: '4px', background: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
                                                 </div>
-                                                : <Square size={20} color="#9ca3af" />
+                                                : <Square size={20} color="var(--text-secondary)" />
                                             }
                                         </div>
-                                        <span style={{ flex: 1, fontWeight: 600, color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span style={{ flex: 1, fontWeight: 600, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             {project.title}
                                             {project.is_archived && (
-                                                <span style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderRadius: '4px', background: '#fef3c7', color: '#92400e', fontSize: '0.7rem', fontWeight: 600 }}>
+                                                <span style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderRadius: '4px', background: 'var(--selection-bg)', color: 'var(--primary-color)', fontSize: '0.7rem', fontWeight: 600 }}>
                                                     <Archive size={12} style={{ marginRight: '4px' }} />
                                                     Archivado{project.updated_at ? ` el ${new Date(project.updated_at).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}` : ''}
                                                 </span>
                                             )}
                                         </span>
-                                        <span style={{ fontSize: '0.85rem', color: '#6b7280', marginRight: '10px' }}>{activeTasks.length} tareas</span>
-                                        {isExpanded ? <ChevronDown size={18} color="#9ca3af" /> : <ChevronRight size={18} color="#9ca3af" />}
+                                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginRight: '10px' }}>{activeTasks.length} tareas</span>
+                                        {isExpanded ? <ChevronDown size={18} color="var(--text-secondary)" /> : <ChevronRight size={18} color="var(--text-secondary)" />}
                                     </div>
 
                                     {/* Task list */}
                                     {isExpanded && (
-                                        <div style={{ padding: '0.5rem 0', background: 'white' }}>
+                                        <div style={{ padding: '0.5rem 0', background: 'var(--card-bg)' }}>
                                             {activeTasks.map(task => {
                                                 const orderIndex = taskSelectionOrder.findIndex(o => o.taskId === task.id);
                                                 const isSelected = orderIndex !== -1;
@@ -239,47 +239,47 @@ const MultiProjectReportModal = ({ isOpen, onClose, projects }) => {
                                                             {isSelected ? (
                                                                 <div style={{
                                                                     width: 20, height: 20, borderRadius: '50%',
-                                                                    background: '#3b82f6', color: 'white',
+                                                                    background: 'var(--primary-color)', color: 'white',
                                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                                     fontSize: '0.7rem', fontWeight: 700
                                                                 }}>
                                                                     {orderNum}
                                                                 </div>
                                                             ) : (
-                                                                <Square size={16} color="#d1d5db" />
+                                                                <Square size={16} color="var(--text-secondary)" />
                                                             )}
                                                         </div>
 
                                                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                                            <span style={{ fontSize: '0.95rem', color: isSelected ? '#1f2937' : '#6b7280', fontWeight: isSelected ? 500 : 400 }}>
+                                                            <span style={{ fontSize: '0.95rem', color: isSelected ? 'var(--text-main)' : 'var(--text-secondary)', fontWeight: isSelected ? 500 : 400 }}>
                                                                 {task.descripcion}
                                                             </span>
 
                                                             <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                                                                 {task.is_archived && (
-                                                                    <span style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderRadius: '4px', background: '#fee2e2', color: '#991b1b', fontSize: '0.75rem', fontWeight: 500 }}>
+                                                                    <span style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderRadius: '4px', background: 'var(--selection-bg)', color: 'var(--danger-color)', fontSize: '0.75rem', fontWeight: 500 }}>
                                                                         <Archive size={12} style={{ marginRight: '4px' }} />
                                                                         Archivada{task.updated_at ? ` el ${new Date(task.updated_at).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}` : ''}
                                                                     </span>
                                                                 )}
                                                                 {task.updated_at && (
-                                                                    <span style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderRadius: '4px', background: '#f3f4f6', color: '#4b5563', fontSize: '0.75rem', fontWeight: 500 }}>
+                                                                    <span style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderRadius: '4px', background: 'var(--header-bg)', color: 'var(--text-secondary)', fontSize: '0.75rem', fontWeight: 500 }}>
                                                                         <Clock size={12} style={{ marginRight: '4px' }} />
                                                                         {new Date(task.updated_at).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}
                                                                     </span>
                                                                 )}
                                                                 {task.completada && (
-                                                                    <span style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderRadius: '4px', background: '#d1fae5', color: '#059669', fontSize: '0.75rem', fontWeight: 500 }}>
+                                                                    <span style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderRadius: '4px', background: 'var(--success-bg)', color: 'var(--success-color)', fontSize: '0.75rem', fontWeight: 500 }}>
                                                                         <CheckCircle size={12} style={{ marginRight: '4px' }} /> Resuelta
                                                                     </span>
                                                                 )}
                                                                 {task.entregado && (
-                                                                    <span style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderRadius: '4px', background: '#d1fae5', color: '#059669', fontSize: '0.75rem', fontWeight: 500 }}>
+                                                                    <span style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderRadius: '4px', background: 'var(--success-bg)', color: 'var(--success-color)', fontSize: '0.75rem', fontWeight: 500 }}>
                                                                         <Send size={12} style={{ marginRight: '4px' }} /> Entregado
                                                                     </span>
                                                                 )}
                                                                 {(task.report_content || (task.evidence && task.evidence.length > 0)) && (
-                                                                    <span style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderRadius: '4px', background: '#e0f2fe', color: '#0284c7', fontSize: '0.75rem', fontWeight: 500 }}>
+                                                                    <span style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderRadius: '4px', background: 'var(--selection-bg)', color: 'var(--primary-color)', fontSize: '0.75rem', fontWeight: 500 }}>
                                                                         <FileText size={12} style={{ marginRight: '4px' }} /> Informe
                                                                     </span>
                                                                 )}
@@ -297,11 +297,11 @@ const MultiProjectReportModal = ({ isOpen, onClose, projects }) => {
                 </div>
 
                 {/* Footer */}
-                <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #e5e7eb', background: '#f9fafb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: '0.9rem', color: '#6b7280' }}>
+                <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)', background: 'var(--header-bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
                         <strong>{totalSelectedProjects}</strong> proyectos, <strong>{totalSelectedTasks}</strong> tareas seleccionadas
                         {totalSelectedTasks > 0 && (
-                            <span style={{ marginLeft: '8px', color: '#9ca3af', fontSize: '0.8rem' }}>— en el orden indicado</span>
+                            <span style={{ marginLeft: '8px', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>— en el orden indicado</span>
                         )}
                     </div>
                     <button
@@ -309,7 +309,8 @@ const MultiProjectReportModal = ({ isOpen, onClose, projects }) => {
                         disabled={totalSelectedTasks === 0}
                         className="create-btn"
                         style={{
-                            background: totalSelectedTasks === 0 ? '#9ca3af' : '#3b82f6',
+                            background: totalSelectedTasks === 0 ? 'var(--border-color)' : 'var(--primary-color)',
+                            color: 'white',
                             cursor: totalSelectedTasks === 0 ? 'not-allowed' : 'pointer',
                             padding: '0.75rem 1.5rem', fontSize: '1rem'
                         }}

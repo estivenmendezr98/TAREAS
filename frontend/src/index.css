@@ -46,6 +46,11 @@ body {
   line-height: 1.5;
 }
 
+select option {
+  background-color: var(--card-bg);
+  color: var(--text-main);
+}
+
 .app-container {
   max-width: 900px;
   margin: 0 auto;
@@ -671,9 +676,9 @@ body {
   gap: 0.75rem;
   margin-bottom: 1rem;
   padding: 1.5rem;
-  border: 2px dashed #e5e7eb;
+  border: 2px dashed var(--border-color);
   border-radius: 12px;
-  background-color: #f9fafb;
+  background-color: var(--header-bg);
 }
 
 .evidence-help-text {
@@ -687,7 +692,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  background: white;
+  background: var(--card-bg);
   border: 1px solid var(--border-color);
   padding: 0.75rem 2rem;
   /* Wider button */
@@ -699,7 +704,7 @@ body {
 }
 
 .upload-btn:hover {
-  background: white;
+  background: var(--card-bg);
   border-color: var(--primary-color);
   color: var(--primary-color);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
@@ -726,10 +731,10 @@ body {
   height: 100%;
   border-radius: 12px;
   overflow: hidden;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--border-color);
   cursor: zoom-in;
   transition: all 0.2s;
-  background-color: #f3f4f6;
+  background-color: var(--input-bg);
   /* Placeholder color */
 }
 
@@ -798,7 +803,7 @@ body {
   height: 100%;
   object-fit: contain;
   /* Changed from cover to contain */
-  background-color: #f3f4f6;
+  background-color: var(--input-bg);
   /* Ensure background is visible */
   transition: transform 0.2s;
 }
@@ -811,7 +816,7 @@ body {
   grid-column: 1 / -1;
   color: var(--text-secondary);
   font-style: italic;
-  background: #f9fafb;
+  background: var(--header-bg);
   padding: 1rem;
   border-radius: 8px;
   text-align: center;
@@ -990,10 +995,9 @@ body {
   color: var(--text-secondary);
 }
 
-/* Day Details Panel */
 .day-details-panel {
   margin-top: 2rem;
-  background: #f9fafb;
+  background: var(--header-bg);
   border-radius: 8px;
   padding: 1.5rem;
   animation: fadeIn 0.3s ease;
@@ -1130,13 +1134,13 @@ body {
 
 /* Improved Calendar Cell Hover */
 .calendar-cell:hover {
-  background: #fdfeff;
+  background: var(--header-bg);
   box-shadow: inset 0 0 0 1px var(--primary-color);
   z-index: 1;
 }
 
 .calendar-cell.today {
-  background: #eff6ff;
+  background: var(--selection-bg);
   font-weight: bold;
 }
 
@@ -1468,7 +1472,7 @@ body {
 }
 
 .toast {
-  background: white;
+  background: var(--card-bg);
   padding: 1rem 1.25rem;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -1529,7 +1533,7 @@ body {
 }
 
 .toast-close:hover {
-  background: #f3f4f6;
+  background: var(--header-bg);
 }
 
 @keyframes slideIn {
@@ -1559,7 +1563,7 @@ body {
 
 /* ---------------- CONFIRMATION MODAL ---------------- */
 .confirm-modal-content {
-  background: white;
+  background: var(--card-bg);
   padding: 2rem;
   border-radius: 16px;
   width: 90%;
@@ -1585,7 +1589,7 @@ body {
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  background: #fef2f2;
+  background: var(--header-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1620,7 +1624,7 @@ body {
 }
 
 .btn-cancel {
-  background: white;
+  background: var(--card-bg);
   border: 1px solid var(--border-color);
   color: var(--text-main);
   padding: 0.75rem 1.5rem;
@@ -1631,8 +1635,8 @@ body {
 }
 
 .btn-cancel:hover {
-  background: #f9fafb;
-  border-color: #d1d5db;
+  background: var(--header-bg);
+  border-color: var(--primary-color);
 }
 
 .btn-confirm {
@@ -2605,7 +2609,7 @@ body {
   gap: 1rem;
   margin-bottom: 2rem;
   padding-bottom: 1rem;
-  border-bottom: 2px solid #f3f4f6;
+  border-bottom: 2px solid var(--border-color);
 }
 
 .recycle-header h2 {
@@ -2621,8 +2625,8 @@ body {
 
 .recycle-info {
   font-size: 0.9rem;
-  color: #6b7280;
-  background: #f3f4f6;
+  color: var(--text-secondary);
+  background: var(--header-bg);
   padding: 0.4rem 0.8rem;
   border-radius: 99px;
   font-weight: 500;
@@ -2634,7 +2638,7 @@ body {
 
 .recycle-section h3 {
   font-size: 1.2rem;
-  color: #374151;
+  color: var(--text-main);
   margin-bottom: 1.5rem;
   display: flex;
   align-items: center;
@@ -2649,8 +2653,8 @@ body {
 }
 
 .recycle-card {
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 1.5rem;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
@@ -2699,7 +2703,7 @@ body {
 .recycle-title {
   font-size: 1.1rem;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--text-main);
   line-height: 1.4;
 }
 
@@ -2718,8 +2722,8 @@ body {
 .project-badge {
   display: inline-block;
   font-size: 0.75rem;
-  background: #f3f4f6;
-  color: #4b5563;
+  background: var(--header-bg);
+  color: var(--text-secondary);
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
   width: fit-content;
@@ -2748,23 +2752,24 @@ body {
 }
 
 .btn-restore {
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--selection-bg);
+  color: var(--primary-color);
 }
 
 .btn-restore:hover {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--primary-hover);
+  color: white;
 }
 
 .btn-permanent-delete {
-  background: #fef2f2;
-  color: #dc2626;
+  background: transparent;
+  color: var(--danger-color);
+  border: 1px solid var(--danger-color);
 }
 
 .btn-permanent-delete:hover {
-  background: #fee2e2;
-  color: #b91c1c;
+  background: var(--danger-color);
+  color: white;
 }
 
 .empty-state {
@@ -2773,29 +2778,29 @@ body {
   align-items: center;
   justify-content: center;
   padding: 4rem;
-  color: #9ca3af;
+  color: var(--text-secondary);
   gap: 1rem;
 }
 
 .empty-state h3 {
   font-size: 1.5rem;
-  color: #374151;
+  color: var(--text-main);
   margin: 0;
 }
 
 /* Task Grouping Styles */
 .tasks-group-container {
   margin-bottom: 2rem;
-  background: #f9fafb;
+  background: var(--header-bg);
   border-radius: 12px;
   padding: 1.5rem;
-  border: 1px dashed #e5e7eb;
+  border: 1px dashed var(--border-color);
 }
 
 .tasks-group-header {
   margin: 0 0 1rem 0;
   font-size: 1.1rem;
-  color: #4b5563;
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   gap: 0.5rem;

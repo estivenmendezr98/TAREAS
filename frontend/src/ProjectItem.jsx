@@ -128,10 +128,10 @@ const ProjectItem = ({ project, categories, onUpdate }) => {
                                 onChange={(e) => setEditCategoryId(e.target.value)}
                                 style={{
                                     padding: '0.4rem',
-                                    border: '1px solid #e5e7eb',
+                                    border: '1px solid var(--border-color)',
                                     borderRadius: '4px',
-                                    backgroundColor: 'white',
-                                    color: '#374151',
+                                    backgroundColor: 'var(--input-bg)',
+                                    color: 'var(--text-main)',
                                     fontSize: '0.9rem',
                                     cursor: 'pointer',
                                     maxWidth: '150px'

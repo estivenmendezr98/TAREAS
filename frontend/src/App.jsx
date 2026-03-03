@@ -31,12 +31,29 @@ function AppContent() {
   const [undoStack, setUndoStack] = useState([]); // Stack of actions to undo
   const { addToast } = useToast();
 
+  // Load theme initially, but we might not have user immediately
   const [theme, setTheme] = useState(() => localStorage.getItem('app-theme') || 'light');
+
+  // When user changes (login/logout/impersonate), load their specific theme
+  useEffect(() => {
+    if (user) {
+      const userTheme = localStorage.getItem(`app-theme-${user.id}`) || localStorage.getItem('app-theme') || 'light';
+      setTheme(userTheme);
+    } else {
+      // If logged out, revert to a default or global theme if desired
+      setTheme(localStorage.getItem('app-theme') || 'light');
+    }
+  }, [user]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
+    // Save to global fallback
     localStorage.setItem('app-theme', theme);
-  }, [theme]);
+    // Save to user specifically
+    if (user) {
+      localStorage.setItem(`app-theme-${user.id}`, theme);
+    }
+  }, [theme, user]);
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
@@ -336,7 +353,7 @@ function AppContent() {
                 value={newProjectCategory}
                 onChange={(e) => setNewProjectCategory(e.target.value)}
                 style={{
-                  border: 'none', background: 'transparent', color: '#6b7280', fontSize: '0.9rem', padding: '0 1rem', cursor: 'pointer', outline: 'none', maxWidth: '150px'
+                  border: 'none', background: 'transparent', color: 'var(--text-secondary)', fontSize: '0.9rem', padding: '0 1rem', cursor: 'pointer', outline: 'none', maxWidth: '150px'
                 }}
               >
                 <option value="">Sin Etiqueta</option>
@@ -490,8 +507,8 @@ function AppContent() {
                             {expandedCategories['uncategorized'] ? <ChevronDown size={20} color="#6b7280" /> : <ChevronRight size={20} color="#6b7280" />}
                           </button>
                           <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#e5e7eb' }}></span>
-                          <h2 style={{ fontSize: '1.2rem', fontWeight: 600, color: '#6b7280', margin: 0 }}>Sin Etiqueta</h2>
-                          <span style={{ fontSize: '0.85rem', color: '#9ca3af', fontWeight: 500 }}>{uncategorized.length}</span>
+                          <h2 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-secondary)', margin: 0 }}>Sin Etiqueta</h2>
+                          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500 }}>{uncategorized.length}</span>
                         </div>
                       )}
 

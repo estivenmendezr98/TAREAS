@@ -138,7 +138,7 @@ const CategoryManager = ({ isOpen, onClose, onUpdate }) => {
 
                     {/* Add New Category Section */}
                     <div className="add-category-section">
-                        <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151', marginBottom: '0.5rem', display: 'block' }}>
+                        <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.5rem', display: 'block' }}>
                             Nueva Etiqueta
                         </label>
                         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
@@ -153,7 +153,7 @@ const CategoryManager = ({ isOpen, onClose, onUpdate }) => {
                             <div
                                 style={{
                                     width: '36px', height: '36px', borderRadius: '6px', backgroundColor: newCatColor,
-                                    flexShrink: 0, border: '1px solid #e5e7eb'
+                                    flexShrink: 0, border: '1px solid var(--border-color)'
                                 }}
                                 title="Color Seleccionado"
                             />
@@ -167,7 +167,7 @@ const CategoryManager = ({ isOpen, onClose, onUpdate }) => {
                                     onClick={() => setNewCatColor(c)}
                                     style={{
                                         width: '100%', aspectRatio: '1', borderRadius: '4px', backgroundColor: c,
-                                        border: newCatColor === c ? '2px solid #000' : '1px solid transparent',
+                                        border: newCatColor === c ? '2px solid var(--text-main)' : '1px solid transparent',
                                         cursor: 'pointer'
                                     }}
                                 />
@@ -179,7 +179,7 @@ const CategoryManager = ({ isOpen, onClose, onUpdate }) => {
                             disabled={!newCatName.trim()}
                             className="create-btn"
                             style={{
-                                width: '100%', padding: '0.5rem', background: '#3b82f6', color: 'white',
+                                width: '100%', padding: '0.5rem', background: 'var(--primary-color)', color: 'white',
                                 border: 'none', borderRadius: '6px', fontWeight: 600, cursor: !newCatName.trim() ? 'not-allowed' : 'pointer',
                                 opacity: !newCatName.trim() ? 0.6 : 1
                             }}
@@ -188,17 +188,17 @@ const CategoryManager = ({ isOpen, onClose, onUpdate }) => {
                         </button>
                     </div>
 
-                    <div style={{ height: '1px', background: '#e5e7eb' }} />
+                    <div style={{ height: '1px', background: 'var(--border-color)' }} />
 
                     {/* Existing Categories List */}
                     <div className="categories-list-section">
-                        <h3 style={{ fontSize: '0.9rem', marginBottom: '0.75rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        <h3 style={{ fontSize: '0.9rem', marginBottom: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                             Existentes ({categories.length})
                         </h3>
                         <div className="categories-scroll" style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            {categories.length === 0 && <p style={{ fontSize: '0.85rem', color: '#9ca3af', fontStyle: 'italic' }}>No hay etiquetas definidas.</p>}
+                            {categories.length === 0 && <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No hay etiquetas definidas.</p>}
                             {categories.map(cat => (
-                                <div key={cat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', background: '#f9fafb', borderRadius: '6px' }}>
+                                <div key={cat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
                                     {editingId === cat.id ? (
                                         <div style={{ display: 'flex', gap: '0.5rem', flex: 1, alignItems: 'center' }}>
                                             <input
@@ -215,20 +215,20 @@ const CategoryManager = ({ isOpen, onClose, onUpdate }) => {
                                                 onChange={(e) => setEditColor(e.target.value)}
                                                 style={{ width: '24px', height: '24px', border: 'none', padding: 0, background: 'none', cursor: 'pointer' }}
                                             />
-                                            <button onClick={() => saveEdit(cat.id)} className="action-btn save-btn" style={{ color: '#10b981' }}><Check size={16} /></button>
-                                            <button onClick={cancelEditing} className="action-btn cancel-btn" style={{ color: '#6b7280' }}><X size={16} /></button>
+                                            <button onClick={() => saveEdit(cat.id)} className="action-btn save-btn" style={{ color: 'var(--success-color)' }}><Check size={16} /></button>
+                                            <button onClick={cancelEditing} className="action-btn cancel-btn" style={{ color: 'var(--text-secondary)' }}><X size={16} /></button>
                                         </div>
                                     ) : (
                                         <>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                 <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: cat.color }} />
-                                                <span style={{ fontWeight: 500, color: '#374151' }}>{cat.name}</span>
+                                                <span style={{ fontWeight: 500, color: 'var(--text-main)' }}>{cat.name}</span>
                                             </div>
                                             <div style={{ display: 'flex', gap: '5px' }}>
                                                 <button
                                                     onClick={() => startEditing(cat)}
                                                     className="action-btn"
-                                                    style={{ color: '#3b82f6' }}
+                                                    style={{ color: 'var(--primary-color)' }}
                                                     title="Editar"
                                                 >
                                                     <Edit2 size={16} />
@@ -236,7 +236,7 @@ const CategoryManager = ({ isOpen, onClose, onUpdate }) => {
                                                 <button
                                                     onClick={() => handleDelete(cat.id)}
                                                     className="action-btn delete-btn"
-                                                    style={{ color: '#ef4444' }}
+                                                    style={{ color: 'var(--danger-color)' }}
                                                     title="Eliminar"
                                                 >
                                                     <Trash2 size={16} />

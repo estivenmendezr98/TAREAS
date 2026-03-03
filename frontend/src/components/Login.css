@@ -4,12 +4,12 @@
     justify-content: center;
     align-items: center;
     height: 100vh;
-    background-color: #f3f4f6;
+    background-color: var(--bg-color);
     font-family: 'Inter', sans-serif;
 }
 
 .login-card {
-    background: white;
+    background: var(--card-bg);
     padding: 2rem;
     border-radius: 8px;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -21,7 +21,7 @@
     margin-top: 0;
     margin-bottom: 1.5rem;
     text-align: center;
-    color: #1f2937;
+    color: var(--text-main);
 }
 
 .form-group {
@@ -31,22 +31,24 @@
 .form-group label {
     display: block;
     margin-bottom: 0.5rem;
-    color: #374151;
+    color: var(--text-main);
     font-weight: 500;
 }
 
 .form-group input {
     width: 100%;
     padding: 0.75rem;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--border-color);
     border-radius: 4px;
     box-sizing: border-box;
     font-size: 1rem;
+    background-color: var(--input-bg);
+    color: var(--text-main);
 }
 
 .form-group input:focus {
     outline: none;
-    border-color: #3b82f6;
+    border-color: var(--primary-color);
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
@@ -64,7 +66,7 @@
 .login-button {
     width: 100%;
     padding: 0.75rem;
-    background-color: #3b82f6;
+    background-color: var(--primary-color);
     color: white;
     border: none;
     border-radius: 4px;
@@ -75,5 +77,5 @@
 }
 
 .login-button:hover {
-    background-color: #2563eb;
+    background-color: var(--primary-hover);
 }

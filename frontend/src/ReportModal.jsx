@@ -727,8 +727,8 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
                             onDragLeave={handleDragLeave}
                             onDrop={handleDrop}
                             style={{
-                                border: isDragging ? '2px dashed #7c3aed' : '2px dashed #e5e7eb',
-                                backgroundColor: isDragging ? '#f5f3ff' : 'transparent',
+                                border: isDragging ? '2px dashed var(--primary-hover)' : '2px dashed var(--border-color)',
+                                backgroundColor: isDragging ? 'var(--header-bg)' : 'transparent',
                                 transition: 'all 0.2s ease',
                                 padding: '2rem',
                                 borderRadius: '12px',
@@ -751,7 +751,7 @@ const ReportModal = ({ task, onClose, onUpdate }) => {
                                     style={{ display: 'none' }}
                                 />
                             </label>
-                            <p className="evidence-help-text" style={{ textAlign: 'center', color: '#6b7280' }}>
+                            <p className="evidence-help-text" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
                                 Arrastra y suelta imágenes aquí<br />
                                 O pega desde el portapapeles (CTRL + V)<br />
                                 Haz clic en una foto para verla en grande.
