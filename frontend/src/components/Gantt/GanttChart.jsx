@@ -309,103 +309,265 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
         setSelectedMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
     };
 
-    // --- EXPORT ---
+    // --- EXPORT PDF (COMPLETO) ---
     const exportToPDF = async () => {
-        if (!containerRef.current || !mainWrapperRef.current || !sidebarRef.current || !canvasRef.current) return;
-
-        const container = containerRef.current;
-        const mainWrapper = mainWrapperRef.current;
-        const sidebarBody = sidebarRef.current;
-        const canvas = canvasRef.current;
-
-        // 1. SAVE ORIGINAL STYLES
-        const elements = [container, mainWrapper, sidebarBody, canvas];
-        const originalStyles = elements.map(el => ({
-            height: el.style.height,
-            overflow: el.style.overflow,
-            position: el.style.position,
-            maxHeight: el.style.maxHeight
-        }));
-
         try {
-            // 2. EXPAND EVERYTHING
-            elements.forEach(el => {
-                el.style.height = 'auto';
-                el.style.overflow = 'visible';
-                el.style.maxHeight = 'none';
+            // Calcular Rango Completo de Fechas
+            let minDate = new Date();
+            let maxDate = new Date();
+
+            if (flatTasks.length > 0) {
+                minDate = new Date(Math.min(...flatTasks.map(t => t._start.getTime())));
+                maxDate = new Date(Math.max(...flatTasks.map(t => t._end.getTime())));
+            } else {
+                minDate = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1);
+                maxDate = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0);
+            }
+
+            // Buffer visual (2 días)
+            minDate.setDate(minDate.getDate() - 3);
+            maxDate.setDate(maxDate.getDate() + 3);
+            minDate.setHours(12, 0, 0, 0);
+            maxDate.setHours(12, 0, 0, 0);
+
+            const exportCols = [];
+            let currentDay = new Date(minDate);
+            while (currentDay <= maxDate) {
+                exportCols.push({
+                    date: new Date(currentDay),
+                    label: currentDay.getDate(),
+                    subLabel: ['D', 'L', 'M', 'M', 'J', 'V', 'S'][currentDay.getDay()],
+                    isWeekend: currentDay.getDay() === 0 || currentDay.getDay() === 6
+                });
+                currentDay.setDate(currentDay.getDate() + 1);
+            }
+
+            // 1. Build HTML Table
+            let tableHTML = `<table border="1" style="border-collapse: collapse; font-family: Arial, sans-serif; background-color: white; width: max-content;">`;
+
+            // --- HEADER ---
+            tableHTML += `<thead style="background-color: #f3f4f6; font-weight: bold; color: #1f2937;">`;
+
+            // Calculate Month/Year Headers (Top row)
+            const monthGroups = [];
+            let currentMonthGroup = null;
+
+            exportCols.forEach(col => {
+                const mName = col.date.toLocaleString('es-ES', { month: 'long', year: 'numeric' }).toUpperCase();
+                if (!currentMonthGroup || currentMonthGroup.name !== mName) {
+                    if (currentMonthGroup) monthGroups.push(currentMonthGroup);
+                    currentMonthGroup = { name: mName, span: 1 };
+                } else {
+                    currentMonthGroup.span += 1;
+                }
+            });
+            if (currentMonthGroup) monthGroups.push(currentMonthGroup);
+
+            // Row 1: Month Name spanning timeline
+            tableHTML += `<tr>`;
+            tableHTML += `<td colspan="5" style="background-color: white; border: none;"></td>`; // Spacer for fixed cols
+
+            monthGroups.forEach(mg => {
+                tableHTML += `<th colspan="${mg.span}" style="background-color: #e5e7eb; padding: 5px; text-align: center; border: 1px solid #ccc;">${mg.name}</th>`;
             });
 
-            // Force layout recalc
-            await new Promise(resolve => setTimeout(resolve, 100));
+            tableHTML += `</tr>`;
 
-            // 3. CAPTURE
-            const canvasImg = await html2canvas(container, {
-                scale: 2,
+            // Row 2: Column Headers
+            tableHTML += `<tr>`;
+            tableHTML += `<th style="width: 200px; padding: 5px; background-color: #f3f4f6;">Proyecto</th>`;
+            tableHTML += `<th style="width: 300px; padding: 5px; background-color: #f3f4f6;">Tarea</th>`;
+            tableHTML += `<th style="width: 100px; padding: 5px; background-color: #f3f4f6;">Inicio</th>`;
+            tableHTML += `<th style="width: 100px; padding: 5px; background-color: #f3f4f6;">Fin</th>`;
+            tableHTML += `<th style="width: 80px; padding: 5px; background-color: #f3f4f6;">Estado</th>`;
+
+            exportCols.forEach(col => {
+                const label = `${col.label} ${col.subLabel}`;
+                const bg = col.isWeekend ? '#f9fafb' : '#ffffff';
+                const width = '30px'; // Forzamos vista diaria firme
+                tableHTML += `<th style="width: ${width}; padding: 2px; text-align: center; background-color: ${bg}; font-size: 10px; border: 1px solid #ccc;">${label}</th>`;
+            });
+            tableHTML += `</tr></thead>`;
+
+            // Body
+            tableHTML += `<tbody style="color: #1f2937;">`;
+
+            Object.entries(groupedTasks).forEach(([projectTitle, projectTasks]) => {
+                // Project Header Row
+                const totalCols = 5 + exportCols.length;
+                tableHTML += `<tr style="background-color: #e5e7eb; font-weight: bold;"><td colspan="${totalCols}" style="padding: 5px; border: 1px solid #ccc;">${projectTitle}</td></tr>`;
+
+                projectTasks.forEach(task => {
+                    tableHTML += `<tr>`;
+                    tableHTML += `<td style="border: 1px solid #ccc; font-size: 11px; padding: 3px;">${projectTitle}</td>`;
+                    tableHTML += `<td style="border: 1px solid #ccc; font-size: 11px; padding: 3px;">${task.descripcion}</td>`;
+                    tableHTML += `<td style="border: 1px solid #ccc; font-size: 11px; padding: 3px;">${formatLocalDate(task._start)}</td>`;
+                    tableHTML += `<td style="border: 1px solid #ccc; font-size: 11px; padding: 3px;">${formatLocalDate(task._end)}</td>`;
+                    tableHTML += `<td style="border: 1px solid #ccc; font-size: 11px; padding: 3px;">${task.completada ? 'Completada' : 'Pendiente'}</td>`;
+
+                    // Timeline Cells
+                    exportCols.forEach(col => {
+                        let isActive = false;
+                        let isWeekend = col.isWeekend;
+
+                        const colDate = col.date.getTime(); // Noon
+                        const start = task._start.getTime();
+                        const end = task._end.getTime();
+                        if (colDate >= start && colDate <= end) isActive = true;
+
+                        const cellBg = isActive
+                            ? (task.completada ? '#10b981' : '#3b82f6')
+                            : (isWeekend ? '#f9fafb' : '#ffffff');
+
+                        const cellColor = isActive ? '#ffffff' : '#1f2937';
+
+                        tableHTML += `<td style="background-color: ${cellBg}; color: ${cellColor}; text-align: center; border: 1px solid #ddd;">${isActive ? '' : ''}</td>`;
+                    });
+                    tableHTML += `</tr>`;
+                });
+            });
+
+            tableHTML += `</tbody></table>`;
+
+            // Creamos un DIV temporal oculto en el DOM para dibujarlo
+            const printDiv = document.createElement('div');
+            printDiv.innerHTML = tableHTML;
+            printDiv.style.position = 'absolute';
+            printDiv.style.left = '-9999px';
+            printDiv.style.top = '0';
+            printDiv.style.backgroundColor = 'white'; // Fondo para canvas
+            document.body.appendChild(printDiv);
+
+            // Damos tiempo a renderizar
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            // CAPTURE
+            const canvasImg = await html2canvas(printDiv.firstChild, {
+                scale: 1.5,
                 useCORS: true,
                 logging: false,
-                height: container.scrollHeight,
-                windowHeight: container.scrollHeight,
-                x: 0,
-                y: 0
+                backgroundColor: '#ffffff'
             });
+
+            // LIMPIAMOS
+            document.body.removeChild(printDiv);
 
             const imgData = canvasImg.toDataURL('image/png');
 
-            // 4. GENERATE PDF (Multi-page)
+            // 4. GENERATE PDF (Multi-page Bidimensional)
+            // Calculamos el tamaño exacto del render en mm. Usando un factor de escala de 0.20 mm por pixel
+            const mmScale = 0.20;
             const pdf = new jsPDF('l', 'mm', 'a4');
-            const imgProps = pdf.getImageProperties(imgData);
-
             const pageWidth = pdf.internal.pageSize.getWidth();
             const pageHeight = pdf.internal.pageSize.getHeight();
 
-            // Adjust width to fit page, calculate scaled height
-            const imgWidth = pageWidth;
-            const imgHeight = (imgProps.height * pageWidth) / imgProps.width;
+            const margin = 5;
+            const usableWidth = pageWidth - (margin * 2);
+            const usableHeight = pageHeight - (margin * 2);
 
-            let heightLeft = imgHeight;
-            let position = 0;
+            const imgProps = pdf.getImageProperties(imgData);
+            const totalImgWidthMm = imgProps.width * mmScale;
+            const totalImgHeightMm = imgProps.height * mmScale;
 
-            // First page
-            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-            heightLeft -= pageHeight;
+            // Cuántas páginas se necesitan horizontal y verticalmente
+            const pagesX = Math.ceil(totalImgWidthMm / usableWidth);
+            const pagesY = Math.ceil(totalImgHeightMm / usableHeight);
 
-            // Subsequent pages
-            while (heightLeft > 0) {
-                position -= pageHeight; // Shift image up
-                pdf.addPage();
-                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-                heightLeft -= pageHeight;
+            let isFirstPage = true;
+
+            for (let y = 0; y < pagesY; y++) {
+                for (let x = 0; x < pagesX; x++) {
+                    if (!isFirstPage) {
+                        pdf.addPage();
+                    }
+                    isFirstPage = false;
+
+                    // Calculamos los offsets de recorte negativos para encajar la porción correspondiente
+                    const sourceX = -(x * usableWidth) + margin;
+                    const sourceY = -(y * usableHeight) + margin;
+
+                    // Dibujamos la imagen completa desplazada
+                    // pdf.addImage(imageData, format, x, y, width, height)
+                    pdf.addImage({
+                        imageData: imgData,
+                        format: 'PNG',
+                        x: sourceX,
+                        y: sourceY,
+                        width: totalImgWidthMm,
+                        height: totalImgHeightMm
+                    });
+                }
             }
 
-            pdf.save(`Gantt_${formatLocalDate(selectedMonth)}.pdf`);
+            pdf.save(`Gantt_Completo_${formatLocalDate(new Date())}.pdf`);
 
         } catch (err) {
             console.error("Error exporting PDF:", err);
             alert("Error al exportar PDF.");
-        } finally {
-            // 5. RESTORE STYLES
-            elements.forEach((el, i) => {
-                el.style.height = originalStyles[i].height;
-                el.style.overflow = originalStyles[i].overflow;
-                el.style.position = originalStyles[i].position;
-                el.style.maxHeight = originalStyles[i].maxHeight;
-            });
         }
     };
 
     // --- VISUAL EXCEL EXPORT (HTML TABLE) ---
     const exportToExcel = () => {
+        // Calcular Rango Completo de Fechas
+        let minDate = new Date();
+        let maxDate = new Date();
+
+        if (flatTasks.length > 0) {
+            minDate = new Date(Math.min(...flatTasks.map(t => t._start.getTime())));
+            maxDate = new Date(Math.max(...flatTasks.map(t => t._end.getTime())));
+        } else {
+            minDate = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1);
+            maxDate = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0);
+        }
+
+        // Buffer visual (2 días)
+        minDate.setDate(minDate.getDate() - 3);
+        maxDate.setDate(maxDate.getDate() + 3);
+        minDate.setHours(12, 0, 0, 0);
+        maxDate.setHours(12, 0, 0, 0);
+
+        const exportCols = [];
+        let currentDay = new Date(minDate);
+        while (currentDay <= maxDate) {
+            exportCols.push({
+                date: new Date(currentDay),
+                label: currentDay.getDate(),
+                subLabel: ['D', 'L', 'M', 'M', 'J', 'V', 'S'][currentDay.getDay()],
+                isWeekend: currentDay.getDay() === 0 || currentDay.getDay() === 6
+            });
+            currentDay.setDate(currentDay.getDate() + 1);
+        }
+
         // 1. Build HTML Table
         let table = `<table border="1" style="border-collapse: collapse; font-family: Arial, sans-serif;">`;
 
         // --- HEADER ---
         table += `<thead style="background-color: #f3f4f6; font-weight: bold;">`;
 
+        // Calculate Month/Year Headers (Top row)
+        const monthGroups = [];
+        let currentMonthGroup = null;
+
+        exportCols.forEach(col => {
+            const mName = col.date.toLocaleString('es-ES', { month: 'long', year: 'numeric' }).toUpperCase();
+            if (!currentMonthGroup || currentMonthGroup.name !== mName) {
+                if (currentMonthGroup) monthGroups.push(currentMonthGroup);
+                currentMonthGroup = { name: mName, span: 1 };
+            } else {
+                currentMonthGroup.span += 1;
+            }
+        });
+        if (currentMonthGroup) monthGroups.push(currentMonthGroup);
+
         // Row 1: Month Name spanning timeline
         table += `<tr>`;
         table += `<td colspan="5" style="background-color: white; border: none;"></td>`; // Spacer for fixed cols
-        const monthName = selectedMonth.toLocaleString('es-ES', { month: 'long', year: 'numeric' }).toUpperCase();
-        table += `<th colspan="${columns.length}" style="background-color: #e5e7eb; padding: 5px; text-align: center; border: 1px solid #ccc;">${monthName}</th>`;
+
+        monthGroups.forEach(mg => {
+            table += `<th colspan="${mg.span}" style="background-color: #e5e7eb; padding: 5px; text-align: center; border: 1px solid #ccc;">${mg.name}</th>`;
+        });
+
         table += `</tr>`;
 
         // Row 2: Column Headers
@@ -416,11 +578,10 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
         table += `<th style="width: 100px; padding: 5px; background-color: #f3f4f6;">Fin</th>`;
         table += `<th style="width: 80px; padding: 5px; background-color: #f3f4f6;">Estado</th>`;
 
-        columns.forEach(col => {
-            const label = viewScale === 'day' ? `${col.label} ${col.subLabel}` : col.label;
+        exportCols.forEach(col => {
+            const label = `${col.label} ${col.subLabel}`;
             const bg = col.isWeekend ? '#f9fafb' : '#ffffff';
-            // Explicit width for clarity. week needs more
-            const width = viewScale === 'week' ? '100px' : '30px';
+            const width = '30px'; // Forzamos vista diaria para Excel completo
             table += `<th style="width: ${width}; padding: 2px; text-align: center; background-color: ${bg}; font-size: 10px; border: 1px solid #ccc;">${label}</th>`;
         });
         table += `</tr></thead>`;
@@ -430,7 +591,7 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
 
         Object.entries(groupedTasks).forEach(([projectTitle, projectTasks]) => {
             // Project Header Row
-            const totalCols = 5 + columns.length;
+            const totalCols = 5 + exportCols.length;
             table += `<tr style="background-color: #e5e7eb; font-weight: bold;"><td colspan="${totalCols}" style="padding: 5px; border: 1px solid #ccc;">${projectTitle}</td></tr>`;
 
             projectTasks.forEach(task => {
@@ -442,33 +603,19 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
                 table += `<td style="border: 1px solid #eee;">${task.completada ? 'Completada' : 'Pendiente'}</td>`;
 
                 // Timeline Cells
-                columns.forEach(col => {
+                exportCols.forEach(col => {
                     // Check intersection
                     let isActive = false;
                     let isWeekend = col.isWeekend;
 
-                    if (viewScale === 'day') {
-                        const colDate = col.date.getTime(); // Noon
-                        const start = task._start.getTime();
-                        const end = task._end.getTime();
-                        if (colDate >= start && colDate <= end) isActive = true;
-                    } else {
-                        // Week overlap
-                        const wStart = col.date.getTime();
-                        const wEnd = new Date(col.date);
-                        wEnd.setDate(wEnd.getDate() + 6);
-                        wEnd.setHours(12, 0, 0, 0);
-                        const wEndTime = wEnd.getTime();
-
-                        const tStart = task._start.getTime();
-                        const tEnd = task._end.getTime();
-
-                        if (Math.max(wStart, tStart) <= Math.min(wEndTime, tEnd)) isActive = true;
-                    }
+                    const colDate = col.date.getTime(); // Noon
+                    const start = task._start.getTime();
+                    const end = task._end.getTime();
+                    if (colDate >= start && colDate <= end) isActive = true;
 
                     const cellBg = isActive
                         ? (task.completada ? '#10b981' : '#3b82f6')
-                        : (isWeekend && viewScale === 'day' ? '#f9fafb' : '#ffffff');
+                        : (isWeekend ? '#f9fafb' : '#ffffff');
 
                     const cellColor = isActive ? '#ffffff' : 'var(--text-main)';
 
@@ -485,7 +632,7 @@ const GanttChart = ({ tasks = [], onTaskUpdate }) => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `Gantt_Visual_${formatLocalDate(selectedMonth)}.xls`;
+        a.download = `Gantt_Completo_${formatLocalDate(new Date())}.xls`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
