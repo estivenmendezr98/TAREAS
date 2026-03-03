@@ -114,7 +114,11 @@ function AppContent() {
 
   // Flatten all tasks for Gantt View
   const allTasks = useMemo(() => {
-    return projects.flatMap(p => p.tasks.map(t => ({ ...t, project_title: p.title }))).filter(t => !t.deleted_at);
+    return projects.flatMap(p => p.tasks.map(t => ({
+      ...t,
+      project_title: p.title,
+      is_archived: t.is_archived || p.is_archived
+    }))).filter(t => !t.deleted_at);
   }, [projects]);
 
   const handleCreateProject = async (e) => {
